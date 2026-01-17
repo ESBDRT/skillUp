@@ -80,34 +80,23 @@ const InfoCard = ({ card, slideNumber, totalSlides }: InfoCardProps) => {
         </div>
       )}
 
-      {/* Image section - takes up to 40% of height */}
+      {/* Image section - compact */}
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         className="relative w-full rounded-2xl overflow-hidden mb-4 shadow-elevated bg-gradient-to-br from-primary/5 to-secondary/10"
-        style={{ minHeight: '180px', maxHeight: '280px' }}
+        style={{ height: '160px' }}
       >
         {imageUrl && !imageError ? (
           <img
             src={imageUrl}
             alt={card.title}
             className="w-full h-full object-cover"
-            style={{ minHeight: '180px', maxHeight: '280px' }}
             onError={handleImageError}
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center py-8" style={{ minHeight: '180px' }}>
-            {isGeneratingImage ? (
-              <>
-                <Loader2 className="w-10 h-10 text-primary animate-spin mb-2" />
-                <span className="text-sm text-muted-foreground">Génération de l'image...</span>
-              </>
-            ) : (
-              <>
-                <span className="text-6xl mb-2">{getPlaceholderEmoji()}</span>
-                <span className="text-sm text-muted-foreground">Image en cours de chargement</span>
-              </>
-            )}
+          <div className="w-full h-full flex flex-col items-center justify-center">
+            <span className="text-5xl">{getPlaceholderEmoji()}</span>
           </div>
         )}
         

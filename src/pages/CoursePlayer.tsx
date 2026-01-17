@@ -315,15 +315,12 @@ const CoursePlayer = () => {
   };
 
   const handleXPGain = (amount: number) => {
-    setXpAmount(amount);
-    setShowXPPopup(true);
+    // No popup, just track XP silently
     setEarnedXP(prev => prev + amount);
     setCompletedCards(prev => new Set([...prev, currentCardIndex]));
     addXP(amount);
     
     saveConceptToMemory(currentCard);
-    
-    setTimeout(() => setShowXPPopup(false), 1500);
   };
 
   const handleNext = async () => {
@@ -382,7 +379,7 @@ const CoursePlayer = () => {
 
   const handleCardComplete = (xp: number) => {
     handleXPGain(xp);
-    setTimeout(handleNext, 500);
+    // No auto-scroll - let user read feedback and tap to continue
   };
 
   if (isComplete) {
@@ -474,9 +471,7 @@ const CoursePlayer = () => {
           </motion.div>
         </AnimatePresence>
 
-        <AnimatePresence>
-          {showXPPopup && <XPPopup amount={xpAmount} />}
-        </AnimatePresence>
+        {/* XP popup removed as requested */}
 
         <div className="absolute inset-0 pointer-events-none flex">
           <div className="w-1/2 flex items-center justify-start pl-2">

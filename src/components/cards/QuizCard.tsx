@@ -8,16 +8,28 @@ interface QuizCardProps {
   onComplete: (xp: number) => void;
 }
 
-// Normalize options to the expected format
+// Normalize options to the expected format - handles nested objects and various formats
 const normalizeOptions = (options: any): Array<{ id: string; text: string; isCorrect: boolean }> => {
-  if (!options || !Array.isArray(options)) return [];
+  if (!options) return [];
+  
+  // Handle case where options is an object with nested options array
+  if (typeof options === 'object' && !Array.isArray(options) && options.options) {
+    return normalizeOptions(options.options);
+  }
+  
+  if (!Array.isArray(options)) return [];
   
   return options.map((option, index) => {
-    // If it's already in the correct format
-    if (typeof option === 'object' && 'text' in option && 'isCorrect' in option) {
+    // If it's null or undefined
+    if (option === null || option === undefined) {
+      return { id: `opt-${index}`, text: '', isCorrect: false };
+    }
+    
+    // If it's already in the correct format with text property
+    if (typeof option === 'object' && option !== null && 'text' in option) {
       return {
         id: option.id || `opt-${index}`,
-        text: String(option.text),
+        text: String(option.text || ''),
         isCorrect: Boolean(option.isCorrect),
       };
     }
@@ -27,17 +39,26 @@ const normalizeOptions = (options: any): Array<{ id: string; text: string; isCor
       return {
         id: `opt-${index}`,
         text: option,
-        isCorrect: false, // Will need correctIndex to determine
+        isCorrect: false,
       };
     }
     
-    // Fallback: try to extract text
+    // If it's a number, convert to string
+    if (typeof option === 'number') {
+      return {
+        id: `opt-${index}`,
+        text: String(option),
+        isCorrect: false,
+      };
+    }
+    
+    // Fallback: convert to string representation
     return {
       id: `opt-${index}`,
-      text: String(option?.text || option || ''),
-      isCorrect: Boolean(option?.isCorrect),
+      text: typeof option === 'object' ? JSON.stringify(option) : String(option),
+      isCorrect: false,
     };
-  });
+  }).filter(opt => opt.text && opt.text !== '[object Object]');
 };
 
 const QuizCard = ({ card, onComplete }: QuizCardProps) => {
