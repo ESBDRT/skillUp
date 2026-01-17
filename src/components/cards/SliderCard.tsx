@@ -8,8 +8,27 @@ interface SliderCardProps {
   onComplete: (xp: number) => void;
 }
 
+// Default slider config if not provided
+const defaultConfig = {
+  min: 0,
+  max: 100,
+  correct: 50,
+  unit: '%',
+  description: ''
+};
+
 const SliderCard = ({ card, onComplete }: SliderCardProps) => {
-  const config = card.sliderConfig!;
+  // Handle both sliderConfig and slider_config property names
+  const rawConfig = card.sliderConfig || (card as any).slider_config;
+  
+  // Parse config if it's a string (from DB)
+  const parsedConfig = typeof rawConfig === 'string' 
+    ? JSON.parse(rawConfig) 
+    : rawConfig;
+  
+  // Merge with defaults to ensure all properties exist
+  const config = { ...defaultConfig, ...parsedConfig };
+  
   const [value, setValue] = useState([Math.floor((config.min + config.max) / 2)]);
   const [hasInteracted, setHasInteracted] = useState(false);
 
@@ -24,18 +43,24 @@ const SliderCard = ({ card, onComplete }: SliderCardProps) => {
   };
 
   const getImpactText = () => {
-    const hour = value[0];
-    if (hour <= 12) return "Impact minimal sur le sommeil";
-    if (hour <= 15) return "Impact modéré - peut retarder l'endormissement de 20 min";
-    if (hour <= 18) return "Impact significatif - retard de 40 min en moyenne";
-    return "Impact majeur - peut réduire le sommeil profond de 20%";
+    const current = value[0];
+    const range = config.max - config.min;
+    const percentage = ((current - config.min) / range) * 100;
+    
+    if (percentage <= 25) return "Niveau faible";
+    if (percentage <= 50) return "Niveau modéré";
+    if (percentage <= 75) return "Niveau élevé";
+    return "Niveau très élevé";
   };
 
   const getImpactColor = () => {
-    const hour = value[0];
-    if (hour <= 12) return "text-success";
-    if (hour <= 15) return "text-level-intermediate";
-    if (hour <= 18) return "text-level-intermediate";
+    const current = value[0];
+    const range = config.max - config.min;
+    const percentage = ((current - config.min) / range) * 100;
+    
+    if (percentage <= 25) return "text-success";
+    if (percentage <= 50) return "text-level-intermediate";
+    if (percentage <= 75) return "text-level-intermediate";
     return "text-destructive";
   };
 
@@ -47,7 +72,7 @@ const SliderCard = ({ card, onComplete }: SliderCardProps) => {
         className="mb-8"
       >
         <div className="inline-block px-3 py-1 bg-primary/10 rounded-full mb-4">
-          <span className="text-sm font-medium text-primary">Interactif</span>
+          <span className="text-sm font-medium text-primary">Estimation</span>
         </div>
         <h2 className="text-2xl font-bold text-foreground mb-2">{card.title}</h2>
         <p className="text-muted-foreground">{card.content}</p>
@@ -64,7 +89,7 @@ const SliderCard = ({ card, onComplete }: SliderCardProps) => {
           <span className="text-5xl font-bold text-foreground">
             {value[0]}
           </span>
-          <span className="text-2xl text-muted-foreground">{config.unit}</span>
+          <span className="text-2xl text-muted-foreground ml-1">{config.unit}</span>
         </div>
 
         <div className="mb-8">
@@ -92,14 +117,16 @@ const SliderCard = ({ card, onComplete }: SliderCardProps) => {
         </motion.div>
       </motion.div>
 
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.4 }}
-        className="mt-6 text-sm text-muted-foreground text-center"
-      >
-        {config.description}
-      </motion.p>
+      {config.description && (
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          className="mt-6 text-sm text-muted-foreground text-center"
+        >
+          {config.description}
+        </motion.p>
+      )}
     </div>
   );
 };
