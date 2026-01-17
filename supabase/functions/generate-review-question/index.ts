@@ -82,7 +82,7 @@ Retourne UNIQUEMENT un JSON valide avec cette structure exacte:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "mistralai/Mistral-7B-v0.1",
+        model: "mistralai/Mistral-Nemo-Instruct-2407",
         messages: [
           { 
             role: "system", 
