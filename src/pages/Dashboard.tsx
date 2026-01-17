@@ -2,9 +2,8 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Zap, Flame, Target, Plus, Brain, Settings, TrendingUp, Loader2 } from 'lucide-react';
-import { mockLessons, categories } from '@/data/mockData';
+import { categories } from '@/data/mockData';
 import { Progress } from '@/components/ui/progress';
-import KnowledgeTree from '@/components/KnowledgeTree';
 import BottomNav from '@/components/BottomNav';
 import { CourseList } from '@/components/CourseList';
 import { TodaySessions } from '@/components/TodaySessions';
@@ -198,15 +197,6 @@ const Dashboard = () => {
           </div>
         </motion.div>
 
-        {/* Knowledge Tree */}
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.55 }}
-        >
-          <h2 className="text-lg font-bold text-foreground mb-4">Arbre de connaissances</h2>
-          <KnowledgeTree lessons={mockLessons} />
-        </motion.div>
       </main>
 
       <BottomNav />

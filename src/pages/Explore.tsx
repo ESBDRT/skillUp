@@ -23,13 +23,12 @@ interface Course {
 
 const categories = [
   { id: 'all', label: 'Tous', icon: '🌟' },
-  { id: 'sciences', label: 'Sciences', icon: '🔬' },
-  { id: 'histoire', label: 'Histoire', icon: '📜' },
-  { id: 'langues', label: 'Langues', icon: '🌍' },
-  { id: 'technologie', label: 'Tech', icon: '💻' },
-  { id: 'art', label: 'Art', icon: '🎨' },
-  { id: 'philosophie', label: 'Philo', icon: '🤔' },
-  { id: 'musique', label: 'Musique', icon: '🎵' },
+  { id: 'bien-être', label: 'Bien-être', icon: '💆' },
+  { id: 'nutrition', label: 'Nutrition', icon: '🍎' },
+  { id: 'mental', label: 'Mental', icon: '🧠' },
+  { id: 'fitness', label: 'Fitness', icon: '💪' },
+  { id: 'productivité', label: 'Productivité', icon: '📈' },
+  { id: 'finances', label: 'Finances', icon: '💰' },
 ];
 
 const Explore = () => {
