@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,6 +10,62 @@ const corsHeaders = {
 function getFallbackImage(keyword: string): string {
   const cleanKeyword = encodeURIComponent(keyword.toLowerCase().replace(/[^a-z0-9\s]/g, '').substring(0, 30) || 'education');
   return `https://placehold.co/800x600/2d3748/eaeaea?text=${cleanKeyword}`;
+}
+
+// Upload base64 image to Supabase Storage and return public URL
+async function uploadToStorage(base64Data: string, keyword: string): Promise<string | null> {
+  try {
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      console.error('Missing Supabase credentials for storage upload');
+      return null;
+    }
+    
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    
+    // Remove data URL prefix if present
+    const cleanBase64 = base64Data.replace(/^data:image\/\w+;base64,/, '');
+    
+    // Decode base64 to binary
+    const binaryString = atob(cleanBase64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    
+    // Generate unique filename
+    const cleanKeyword = keyword.toLowerCase().replace(/[^a-z0-9]/g, '-').substring(0, 20);
+    const fileName = `${cleanKeyword}-${Date.now()}-${Math.random().toString(36).substring(7)}.png`;
+    
+    console.log(`Uploading image to storage: ${fileName}`);
+    
+    // Upload to storage
+    const { data, error } = await supabase.storage
+      .from('course-images')
+      .upload(fileName, bytes, {
+        contentType: 'image/png',
+        upsert: false
+      });
+    
+    if (error) {
+      console.error('Storage upload error:', error);
+      return null;
+    }
+    
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('course-images')
+      .getPublicUrl(fileName);
+    
+    console.log(`Image uploaded successfully: ${publicUrl}`);
+    return publicUrl;
+    
+  } catch (error) {
+    console.error('Error uploading to storage:', error);
+    return null;
+  }
 }
 
 serve(async (req) => {
@@ -60,7 +117,6 @@ No text in the image. High quality, 800x600 aspect ratio.`;
       const errorText = await response.text();
       console.error('AI Gateway error:', response.status, errorText);
       
-      // Always return a valid response with fallback
       return new Response(JSON.stringify({ 
         imageUrl: getFallbackImage(subject)
       }), {
@@ -82,10 +138,24 @@ No text in the image. High quality, 800x600 aspect ratio.`;
       });
     }
 
-    console.log('AI image generated successfully');
+    console.log('AI image generated, uploading to storage...');
     
+    // Upload base64 image to Storage and get persistent URL
+    const publicUrl = await uploadToStorage(imageData, subject);
+    
+    if (publicUrl) {
+      console.log('Image stored successfully in Storage');
+      return new Response(JSON.stringify({ 
+        imageUrl: publicUrl
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // Fallback to placeholder if storage upload fails
+    console.log('Storage upload failed, using fallback');
     return new Response(JSON.stringify({ 
-      imageUrl: imageData
+      imageUrl: getFallbackImage(subject)
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });

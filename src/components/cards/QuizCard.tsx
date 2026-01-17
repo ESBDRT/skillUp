@@ -6,6 +6,7 @@ import { Card } from '@/data/mockData';
 interface QuizCardProps {
   card: Card;
   onComplete: (xp: number) => void;
+  onNext?: () => void;
 }
 
 // Normalize options to the expected format - handles nested objects and various formats
@@ -61,9 +62,10 @@ const normalizeOptions = (options: any): Array<{ id: string; text: string; isCor
   }).filter(opt => opt.text && opt.text !== '[object Object]');
 };
 
-const QuizCard = ({ card, onComplete }: QuizCardProps) => {
+const QuizCard = ({ card, onComplete, onNext }: QuizCardProps) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [hasAnswered, setHasAnswered] = useState(false);
+  const [hasCompleted, setHasCompleted] = useState(false);
 
   // Normalize options to ensure correct format
   const normalizedOptions = normalizeOptions(card.options);
@@ -76,9 +78,20 @@ const QuizCard = ({ card, onComplete }: QuizCardProps) => {
 
     const isCorrect = normalizedOptions.find(o => o.id === optionId)?.isCorrect;
     
+    // Award XP after a short delay
     setTimeout(() => {
-      onComplete(isCorrect ? card.xpReward : 0);
-    }, 1000);
+      if (!hasCompleted) {
+        setHasCompleted(true);
+        onComplete(isCorrect ? card.xpReward : 0);
+      }
+    }, 500);
+  };
+
+  const handleContinue = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onNext) {
+      onNext();
+    }
   };
 
   return (
@@ -154,6 +167,18 @@ const QuizCard = ({ card, onComplete }: QuizCardProps) => {
           );
         })}
       </div>
+
+      {hasAnswered && (
+        <motion.button
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          onClick={handleContinue}
+          className="mt-6 px-6 py-3 bg-primary text-primary-foreground rounded-full font-medium hover:bg-primary/90 transition-colors self-center"
+        >
+          Continuer →
+        </motion.button>
+      )}
     </div>
   );
 };

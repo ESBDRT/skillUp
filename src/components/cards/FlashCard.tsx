@@ -6,9 +6,10 @@ import { Card } from '@/data/mockData';
 interface FlashCardProps {
   card: Card;
   onComplete: (xp: number) => void;
+  onNext?: () => void;
 }
 
-const FlashCard = ({ card, onComplete }: FlashCardProps) => {
+const FlashCard = ({ card, onComplete, onNext }: FlashCardProps) => {
   const [isFlipped, setIsFlipped] = useState(false);
   const [hasCompleted, setHasCompleted] = useState(false);
 
@@ -18,10 +19,15 @@ const FlashCard = ({ card, onComplete }: FlashCardProps) => {
       setIsFlipped(true);
       if (!hasCompleted) {
         setHasCompleted(true);
-        setTimeout(() => {
-          onComplete(card.xpReward);
-        }, 500);
+        onComplete(card.xpReward);
       }
+    }
+  };
+
+  const handleContinue = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onNext) {
+      onNext();
     }
   };
 
@@ -76,13 +82,14 @@ const FlashCard = ({ card, onComplete }: FlashCardProps) => {
       </div>
 
       {isFlipped && (
-        <motion.p
+        <motion.button
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-6 text-sm text-muted-foreground text-center"
+          onClick={handleContinue}
+          className="mt-6 px-6 py-3 bg-primary text-primary-foreground rounded-full font-medium hover:bg-primary/90 transition-colors"
         >
-          Tapez à droite pour continuer →
-        </motion.p>
+          Continuer →
+        </motion.button>
       )}
     </div>
   );

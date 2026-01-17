@@ -402,9 +402,9 @@ const CoursePlayer = () => {
       case 'info':
         return <InfoCard card={currentCard} slideNumber={infoCardsUpToNow} totalSlides={totalInfoCards} />;
       case 'quiz':
-        return <QuizCard card={currentCard} onComplete={handleCardComplete} />;
+        return <QuizCard card={currentCard} onComplete={handleCardComplete} onNext={handleNext} />;
       case 'flashcard':
-        return <FlashCard card={currentCard} onComplete={handleCardComplete} />;
+        return <FlashCard card={currentCard} onComplete={handleCardComplete} onNext={handleNext} />;
       case 'slider':
         return <SliderCard card={currentCard} onComplete={handleCardComplete} />;
       case 'open-question':
