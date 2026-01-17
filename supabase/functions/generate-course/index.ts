@@ -33,30 +33,6 @@ interface GenerateCourseRequest {
   coursePlan?: CoursePlan;
 }
 
-const levelInstructions = {
-  beginner: `
-    - Utilise un vocabulaire simple et accessible
-    - Explique chaque concept de base en détail
-    - Donne des exemples concrets du quotidien
-    - Évite le jargon technique ou explique-le
-    - Progression très douce entre les concepts
-  `,
-  intermediate: `
-    - Suppose une connaissance de base du sujet
-    - Approfondis les concepts et leurs liens
-    - Introduis des nuances et des cas particuliers
-    - Utilise un vocabulaire plus technique avec modération
-    - Propose des exercices de réflexion
-  `,
-  expert: `
-    - Aborde des concepts avancés et complexes
-    - Propose une analyse critique et des débats
-    - Cite des références et des études si pertinent
-    - Explore les cas limites et les controverses
-    - Encourage la pensée indépendante
-  `
-};
-
 const levelNames = {
   beginner: 'Notions',
   intermediate: 'Intermédiaire',
@@ -101,7 +77,7 @@ serve(async (req) => {
   try {
     const { theme, dailyMinutes, level, knownKeywords, coursePlan }: GenerateCourseRequest = await req.json();
     
-    console.log(`Generating course: theme="${theme}", minutes=${dailyMinutes}, level=${level}, knownKeywords=${knownKeywords?.length || 0}, hasPlan=${!!coursePlan}`);
+    console.log(`Generating course: theme="${theme}", minutes=${dailyMinutes}, level=${level}`);
 
     const FEATHERLESS_API_KEY = Deno.env.get('API');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
@@ -111,83 +87,9 @@ serve(async (req) => {
       throw new Error('API key is not configured');
     }
 
-    // If we have a course plan, use it to guide generation
     const hasPlan = coursePlan && coursePlan.days && coursePlan.days.length > 0;
-    
-    // STRICT LIMIT: 5-7 slides maximum, regardless of plan
-    const maxSlides = 7;
-    const minSlides = 5;
-    
-    const totalConcepts = hasPlan 
-      ? Math.min(maxSlides, coursePlan.days.reduce((sum, day) => sum + day.concepts.length, 0))
-      : Math.min(maxSlides, Math.max(minSlides, Math.floor(dailyMinutes / 2)));
-    
-    // Only 2-3 tests maximum
-    const quizCount = Math.min(3, Math.max(2, Math.ceil(totalConcepts / 3)));
-
-    const knownConceptsInstruction = knownKeywords && knownKeywords.length > 0
-      ? `\n\nIMPORTANT - ADAPTATION AU NIVEAU DE L'APPRENANT :
-L'apprenant a indiqué qu'il connaît déjà ces concepts : ${knownKeywords.join(', ')}.
-- NE PAS répéter les bases de ces concepts, l'apprenant les maîtrise déjà
-- Mentionner brièvement ces concepts si nécessaire, mais aller plus loin
-- Se concentrer sur les aspects avancés et les connexions avec d'autres concepts
-- Proposer des nuances et des approfondissements sur ces sujets`
-      : '';
-
-    // Build the plan instruction if we have a course plan - limit to maxSlides
-    const limitedDays = hasPlan ? coursePlan.days.slice(0, maxSlides) : [];
-    const planInstruction = hasPlan 
-      ? `\n\nPLANNING VALIDÉ - SUIT CE PLAN (limité à ${maxSlides} slides max) :
-Titre du cours : "${coursePlan.courseTitle}"
-Description : "${coursePlan.courseDescription}"
-
-${limitedDays.map((day, i) => `SLIDE ${i + 1} - "${day.title}" :
-  Concept : ${day.concepts[0] || day.title}`).join('\n\n')}
-
-IMPORTANT : Crée EXACTEMENT ${Math.min(maxSlides, limitedDays.length)} slides, pas plus.`
-      : '';
-
-    const systemPrompt = `Tu es un expert pédagogue qui crée des cours éducatifs de haute qualité.
-
-Niveau de difficulté : ${levelNames[level]}
-${levelInstructions[level]}${knownConceptsInstruction}${planInstruction}
-
-RÈGLES STRICTES :
-1. MAXIMUM ${maxSlides} SLIDES - pas plus !
-2. Chaque slide doit contenir 150-200 mots MINIMUM avec des exemples concrets
-3. Seulement ${quizCount} questions de test (QCM ou flashcard uniquement)
-4. Contenu RICHE et SUBSTANTIEL, pas superficiel
-
-Le contenu doit être en français, éducatif et engageant.`;
-
-    const userPrompt = `Crée un cours en EXACTEMENT ${totalConcepts} SLIDES sur : "${theme}"
-
-RÉPONDS UNIQUEMENT avec un JSON valide dans ce format exact :
-{
-  "title": "Titre accrocheur du cours (max 60 caractères)",
-  "description": "Description du cours (2-3 phrases)",
-  "category": "Science|Histoire|Psychologie|Finance|Santé|Art|Technologie",
-  "icon": "📚",
-  "lessonSections": [
-    {
-      "title": "Titre court slide 1 (max 50 caractères)",
-      "content": "Contenu RICHE de 150-200 mots avec **mots en gras** et exemples concrets. Utilise > pour les callouts.",
-      "imageKeyword": "keyword english 2-3 words"
-    }
-  ],
-  "quizQuestions": [
-    {"type": "quiz", "question": "Question?", "options": ["Option A", "Option B", "Option C", "Option D"], "correctIndex": 0},
-    {"type": "flashcard", "question": "Concept", "answer": "Définition détaillée de 50-100 mots"}
-  ]
-}
-
-IMPORTANT:
-- EXACTEMENT ${totalConcepts} slides dans lessonSections
-- Titres COURTS (max 40 caractères) pour mobile
-- Contenu RICHE (150-200 mots) avec **gras** et > callouts
-- SEULEMENT ${quizCount} tests
-- Options QCM = phrases complètes
-- Flashcard DOIT avoir answer de 50-100 mots`;
+    const maxSlides = 5;
+    const quizCount = 2;
 
     const response = await fetch('https://api.featherless.ai/v1/chat/completions', {
       method: 'POST',
@@ -196,12 +98,19 @@ IMPORTANT:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'mistralai/Mistral-7B-v0.1',
+        model: 'mistralai/Mistral-7B-Instruct-v0.3',
         messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
+          {
+            role: 'user',
+            content: `Crée un cours éducatif sur "${theme}" avec ${maxSlides} slides et ${quizCount} quiz.
+Niveau: ${levelNames[level]}
+
+Tu DOIS répondre UNIQUEMENT avec ce JSON, sans texte avant ou après :
+{"title":"Titre du cours","description":"Description courte","category":"Science","icon":"🔬","lessonSections":[{"title":"Slide 1","content":"Contenu de 100 mots avec des **mots en gras**. Explique le concept avec un exemple concret.","imageKeyword":"keyword english"}],"quizQuestions":[{"type":"quiz","question":"Question?","options":["Option A","Option B","Option C","Option D"],"correctIndex":0},{"type":"flashcard","question":"Concept?","answer":"Réponse détaillée de 50 mots"}]}`
+          }
         ],
-        max_tokens: 4096
+        max_tokens: 4096,
+        temperature: 0.4
       })
     });
 
@@ -218,156 +127,134 @@ IMPORTANT:
         });
       }
       
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ 
-          error: 'Crédits insuffisants.' 
-        }), {
-          status: 402,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-      
       throw new Error(`API error: ${response.status}`);
     }
 
     const aiResponse = await response.json();
-    console.log('AI Response received');
+    const content = aiResponse.choices?.[0]?.message?.content || '';
+    
+    console.log('Raw AI response:', content.substring(0, 500));
 
     let courseData;
-    const messageContent = aiResponse.choices?.[0]?.message?.content;
     
-    if (messageContent) {
-      console.log('Attempting to parse from message content');
+    // Strategy 1: Direct JSON match
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
       try {
-        const jsonMatch = messageContent.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          courseData = JSON.parse(jsonMatch[0]);
-          console.log('Parsed course data from message content');
-        }
-      } catch (contentParseError) {
-        console.error('Failed to parse message content:', contentParseError);
+        courseData = JSON.parse(jsonMatch[0]);
+        console.log('Parsed with strategy 1');
+      } catch (e) {
+        console.log('Strategy 1 failed');
       }
     }
-
+    
+    // Strategy 2: Code block
+    if (!courseData) {
+      const codeBlockMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      if (codeBlockMatch) {
+        try {
+          courseData = JSON.parse(codeBlockMatch[1].trim());
+          console.log('Parsed with strategy 2');
+        } catch (e) {
+          console.log('Strategy 2 failed');
+        }
+      }
+    }
+    
+    // Fallback: Generate basic course
     if (!courseData || !courseData.lessonSections) {
-      throw new Error('Impossible de générer le cours. Veuillez réessayer.');
+      console.log('Using fallback course structure');
+      courseData = {
+        title: `Cours sur ${theme}`,
+        description: `Découvrez les bases de ${theme} dans ce cours adapté au niveau ${levelNames[level]}.`,
+        category: 'Autre',
+        icon: '📚',
+        lessonSections: [
+          {
+            title: `Introduction à ${theme}`,
+            content: `**${theme}** est un sujet fascinant que nous allons explorer ensemble. Ce cours vous permettra de comprendre les concepts fondamentaux et de les appliquer dans des situations concrètes. Nous commencerons par les bases avant d'approfondir progressivement.`,
+            imageKeyword: theme.split(' ')[0]
+          },
+          {
+            title: 'Les concepts clés',
+            content: `Pour bien comprendre **${theme}**, il faut maîtriser plusieurs concepts importants. Nous allons les découvrir un par un, avec des exemples pratiques pour faciliter l'apprentissage.`,
+            imageKeyword: 'learning concept'
+          },
+          {
+            title: 'Applications pratiques',
+            content: `**${theme}** a de nombreuses applications dans la vie quotidienne. Comprendre ces applications vous aidera à mieux retenir les concepts théoriques et à les utiliser efficacement.`,
+            imageKeyword: 'practice application'
+          }
+        ],
+        quizQuestions: [
+          {
+            type: 'quiz',
+            question: `Quel est l'objectif principal de l'étude de ${theme} ?`,
+            options: [
+              'Comprendre les concepts fondamentaux',
+              'Mémoriser des formules',
+              'Passer un examen',
+              'Aucune réponse'
+            ],
+            correctIndex: 0
+          },
+          {
+            type: 'flashcard',
+            question: `Qu'est-ce que ${theme} ?`,
+            answer: `${theme} est un domaine d'étude qui permet de comprendre des concepts importants et de les appliquer dans diverses situations pratiques.`
+          }
+        ]
+      };
     }
 
-    // STRICT: Limit to maxSlides
-    const limitedSections = courseData.lessonSections.slice(0, maxSlides);
-    console.log(`Processing ${limitedSections.length} slides (limited from ${courseData.lessonSections.length})`);
+    // Limit sections
+    const limitedSections = (courseData.lessonSections || []).slice(0, maxSlides);
+    console.log(`Processing ${limitedSections.length} slides`);
 
-    // Build the cards array
+    // Build cards
     const cards: any[] = [];
 
-    // Generate images in parallel for all sections
-    console.log(`Starting image generation for ${limitedSections.length} slides`);
-    const imagePromises = limitedSections.map((section: any, idx: number) => {
+    // Generate images
+    const imagePromises = limitedSections.map((section: any) => {
       const keyword = section.imageKeyword || theme;
-      console.log(`[Slide ${idx + 1}] Image keyword: ${keyword}`);
       return generateImage(keyword, theme, SUPABASE_URL, SUPABASE_ANON_KEY);
     });
     const imageUrls = await Promise.all(imagePromises);
-    console.log(`Image generation complete. Results:`, imageUrls.map(u => u?.substring(0, 40)));
 
-    // Each section becomes a separate "info" card (slide)
+    // Add info cards
     limitedSections.forEach((section: any, index: number) => {
-      const imgUrl = imageUrls[index];
-      console.log(`[Card ${index}] Adding with image: ${imgUrl?.substring(0, 50)}`);
       cards.push({
         type: 'info',
-        title: section.title,
-        content: section.content,
-        image_url: imgUrl,
+        title: section.title || `Slide ${index + 1}`,
+        content: section.content || 'Contenu du cours.',
+        image_url: imageUrls[index],
         xpReward: 15
       });
     });
 
-    // Limit quiz questions to quizCount
+    // Add quiz cards
     const limitedQuizzes = (courseData.quizQuestions || []).slice(0, quizCount);
-
-    // Add quiz questions - only quiz and flashcard types
     limitedQuizzes.forEach((quiz: any, index: number) => {
-      const questionType = quiz.type || 'quiz';
-      
-      // Format and validate options for QCM
-      const formatOptions = (options: any[]): Array<{id: string; text: string; isCorrect: boolean}> | null => {
-        if (!options || !Array.isArray(options)) return null;
+      if (quiz.type === 'quiz' && Array.isArray(quiz.options)) {
+        const formattedOptions = quiz.options.map((opt: any, i: number) => ({
+          id: `opt-${index}-${i}`,
+          text: typeof opt === 'string' ? opt : opt.text || `Option ${i + 1}`,
+          isCorrect: i === (quiz.correctIndex || 0)
+        }));
         
-        const validOptions = options
-          .map((opt: any, i: number) => {
-            const text = typeof opt === 'string' ? opt.trim() : (opt?.text?.trim() || '');
-            if (!text || text.length < 2) return null;
-            return {
-              id: `opt-${index}-${i}`,
-              text: text,
-              isCorrect: i === quiz.correctIndex
-            };
-          })
-          .filter(Boolean) as Array<{id: string; text: string; isCorrect: boolean}>;
-        
-        // Need at least 2 valid options
-        return validOptions.length >= 2 ? validOptions : null;
-      };
-      
-      // Only allow quiz and flashcard types
-      if (questionType === 'quiz') {
-        const formattedOptions = formatOptions(quiz.options);
-        if (formattedOptions) {
-          cards.push({
-            type: 'quiz',
-            title: `Question ${index + 1}`,
-            content: quiz.question,
-            options: formattedOptions,
-            xpReward: 25
-          });
-        } else {
-          // Convert to flashcard if options are invalid
-          cards.push({
-            type: 'flashcard',
-            title: `Mémorisation ${index + 1}`,
-            content: quiz.question,
-            flashcard_back: quiz.answer || quiz.options?.[quiz.correctIndex] || 'Réponse à découvrir',
-            xpReward: 20
-          });
-        }
-      } else if (questionType === 'flashcard') {
-        // Ensure flashcard has valid back content - prioritize answer field
-        const backContent = quiz.answer || quiz.expectedAnswer || quiz.backContent || '';
-        
-        console.log(`Flashcard ${index + 1}: question="${quiz.question?.substring(0, 50)}", answer="${backContent?.substring(0, 50)}"`);
-        
-        if (backContent && backContent.trim().length >= 10 && backContent.trim() !== quiz.question?.trim()) {
-          cards.push({
-            type: 'flashcard',
-            title: `Mémorisation ${index + 1}`,
-            content: quiz.question,
-            flashcard_back: backContent.trim(),
-            xpReward: 20
-          });
-        } else {
-          // Fallback: create a meaningful response based on the question
-          console.warn(`Flashcard ${index + 1} has no valid answer, generating placeholder`);
-          const fallbackAnswer = `La réponse à "${quiz.question}" est un concept clé de ce cours. Prenez le temps de réfléchir avant de retourner la carte.`;
-          cards.push({
-            type: 'flashcard',
-            title: `Mémorisation ${index + 1}`,
-            content: quiz.question,
-            flashcard_back: fallbackAnswer,
-            xpReward: 20
-          });
-        }
+        cards.push({
+          type: 'quiz',
+          title: `Question ${index + 1}`,
+          content: quiz.question,
+          options: formattedOptions,
+          xpReward: 25
+        });
       } else {
-        // Convert any other type to flashcard with validation
-        const backContent = quiz.answer || quiz.expectedAnswer || '';
-        const finalBack = backContent.trim().length >= 10 
-          ? backContent.trim() 
-          : `Réflexion sur : ${quiz.question}. Ce concept est fondamental pour comprendre le sujet.`;
         cards.push({
           type: 'flashcard',
           title: `Mémorisation ${index + 1}`,
           content: quiz.question,
-          flashcard_back: finalBack,
+          flashcard_back: quiz.answer || 'Réponse à découvrir.',
           xpReward: 20
         });
       }
@@ -375,25 +262,20 @@ IMPORTANT:
 
     const totalXP = cards.reduce((sum: number, card: any) => sum + (card.xpReward || 0), 0);
 
-    // Calculate optimal duration based on card count
-    const totalCards = cards.length;
-    const cardsPerDay = Math.max(4, Math.ceil(dailyMinutes / 2));
-    const durationDays = Math.max(1, Math.ceil(totalCards / cardsPerDay));
-
     const result = {
-      title: courseData.title,
-      description: courseData.description,
-      category: courseData.category,
-      icon: courseData.icon,
+      title: courseData.title || `Cours sur ${theme}`,
+      description: courseData.description || `Cours sur ${theme}`,
+      category: courseData.category || 'Autre',
+      icon: courseData.icon || '📚',
       level: level,
       estimated_minutes: dailyMinutes,
       total_xp: totalXP,
-      duration_days: durationDays,
-      daily_cards_count: cardsPerDay,
+      duration_days: 1,
+      daily_cards_count: cards.length,
       cards: cards
     };
 
-    console.log(`Course generated: "${result.title}" with ${cards.length} cards (${limitedSections.length} slides, ${limitedQuizzes.length} questions), duration: ${durationDays} days`);
+    console.log(`Course generated: "${result.title}" with ${cards.length} cards`);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
