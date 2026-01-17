@@ -153,6 +153,18 @@ export const translations = {
           {
             question: "How does spaced repetition work?",
             answer: "Our AI tracks what you've learned and shows you concepts **right before you'd forget them**. This scientifically-proven method maximizes retention."
+          },
+          {
+            question: "Is my progress saved across devices?",
+            answer: "**Yes, with Pro plan**. Your learning progress syncs seamlessly across all your devices - phone, tablet, and desktop."
+          },
+          {
+            question: "Can I switch plans anytime?",
+            answer: "Absolutely! You can **upgrade, downgrade, or cancel at any time**. No long-term commitments required."
+          },
+          {
+            question: "How is MicroLearn different from other platforms?",
+            answer: "We combine **AI-powered personalization, spaced repetition, and bite-sized content** to maximize retention in minimal time. Most users see results within weeks, not months."
           }
         ]
       },
@@ -254,6 +266,18 @@ export const translations = {
           {
             question: "What about data security?",
             answer: "We're **SOC 2 Type II certified** and GDPR compliant. Your data is encrypted at rest and in transit with enterprise-grade security."
+          },
+          {
+            question: "Can we integrate with our existing LMS?",
+            answer: "**Yes, via our API**. We support SCORM, xAPI, and custom integrations with most enterprise LMS platforms."
+          },
+          {
+            question: "What support options are available?",
+            answer: "Business plans include **priority email and chat support**. Enterprise plans get a dedicated account manager and 24/7 phone support."
+          },
+          {
+            question: "How quickly can we get started?",
+            answer: "Most teams are **up and running within 48 hours**. Our onboarding specialists help with setup, content migration, and user training."
           }
         ]
       }
@@ -413,6 +437,18 @@ export const translations = {
           {
             question: "Comment fonctionne la répétition espacée ?",
             answer: "Notre IA suit ce que vous avez appris et vous montre les concepts **juste avant que vous ne les oubliez**. Cette méthode scientifiquement prouvée maximise la rétention."
+          },
+          {
+            question: "Ma progression est-elle sauvegardée sur tous mes appareils ?",
+            answer: "**Oui, avec le plan Pro**. Votre progression se synchronise automatiquement sur tous vos appareils - téléphone, tablette et ordinateur."
+          },
+          {
+            question: "Puis-je changer de plan à tout moment ?",
+            answer: "Absolument ! Vous pouvez **évoluer, rétrograder ou annuler à tout moment**. Aucun engagement long terme requis."
+          },
+          {
+            question: "En quoi MicroLearn est-il différent des autres plateformes ?",
+            answer: "Nous combinons **personnalisation IA, répétition espacée et contenu micro-formaté** pour maximiser la rétention en un minimum de temps. La plupart des utilisateurs voient des résultats en semaines, pas en mois."
           }
         ]
       },
@@ -514,6 +550,18 @@ export const translations = {
           {
             question: "Qu'en est-il de la sécurité des données ?",
             answer: "Nous sommes **certifiés SOC 2 Type II** et conformes RGPD. Vos données sont chiffrées au repos et en transit."
+          },
+          {
+            question: "Pouvons-nous intégrer notre LMS existant ?",
+            answer: "**Oui, via notre API**. Nous supportons SCORM, xAPI et les intégrations personnalisées avec la plupart des LMS entreprise."
+          },
+          {
+            question: "Quelles options de support sont disponibles ?",
+            answer: "Les plans Business incluent **support prioritaire par email et chat**. Les plans Enterprise ont un gestionnaire de compte dédié et support téléphonique 24/7."
+          },
+          {
+            question: "En combien de temps pouvons-nous démarrer ?",
+            answer: "La plupart des équipes sont **opérationnelles en 48 heures**. Nos spécialistes onboarding aident à la configuration, migration de contenu et formation des utilisateurs."
           }
         ]
       }

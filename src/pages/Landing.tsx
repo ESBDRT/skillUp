@@ -32,44 +32,51 @@ const Landing = () => {
     <div className="min-h-screen bg-background overflow-hidden">
       {/* Decorative background elements */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        {/* Animated gradient blobs */}
-        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl animate-blob" />
-        <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-purple-500/5 rounded-full blur-3xl animate-blob animation-delay-2000" />
-        <div className="absolute bottom-1/4 left-1/3 w-[400px] h-[400px] bg-emerald-500/5 rounded-full blur-3xl animate-blob animation-delay-4000" />
+        {/* Animated gradient blobs - MORE VISIBLE */}
+        <div className="absolute top-0 left-1/4 w-[700px] h-[700px] bg-primary/15 rounded-full blur-[120px] animate-blob" />
+        <div className="absolute top-1/3 right-1/4 w-[600px] h-[600px] bg-purple-500/12 rounded-full blur-[100px] animate-blob animation-delay-2000" />
+        <div className="absolute bottom-1/4 left-1/3 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[80px] animate-blob animation-delay-4000" />
+        <div className="absolute top-1/2 right-1/3 w-[400px] h-[400px] bg-primary/10 rounded-full blur-[60px] animate-blob animation-delay-6000" />
         
-        {/* Floating particles */}
+        {/* Floating particles - BIGGER AND BRIGHTER */}
         <div className="absolute inset-0">
           {/* Large drifting orbs */}
-          <div className="absolute top-1/4 left-[10%] w-2 h-2 rounded-full bg-primary/20 animate-drift" />
-          <div className="absolute top-1/2 right-[15%] w-3 h-3 rounded-full bg-purple-500/15 animate-drift animation-delay-2000" />
-          <div className="absolute bottom-1/3 left-[20%] w-2.5 h-2.5 rounded-full bg-primary/15 animate-drift animation-delay-4000" />
-          <div className="absolute top-[60%] right-[25%] w-2 h-2 rounded-full bg-emerald-500/15 animate-drift animation-delay-6000" />
+          <div className="absolute top-1/4 left-[10%] w-4 h-4 rounded-full bg-primary/40 animate-drift shadow-lg shadow-primary/30" />
+          <div className="absolute top-1/2 right-[15%] w-5 h-5 rounded-full bg-purple-500/35 animate-drift animation-delay-2000 shadow-lg shadow-purple-500/20" />
+          <div className="absolute bottom-1/3 left-[20%] w-4 h-4 rounded-full bg-primary/30 animate-drift animation-delay-4000 shadow-lg shadow-primary/20" />
+          <div className="absolute top-[60%] right-[25%] w-3 h-3 rounded-full bg-emerald-500/35 animate-drift animation-delay-6000 shadow-lg shadow-emerald-500/20" />
+          <div className="absolute top-[20%] right-[40%] w-3 h-3 rounded-full bg-primary/35 animate-drift" />
+          <div className="absolute bottom-[40%] left-[40%] w-4 h-4 rounded-full bg-purple-500/30 animate-drift animation-delay-4000" />
           
-          {/* Rising particles */}
-          <div className="absolute bottom-0 left-[15%] w-1.5 h-1.5 rounded-full bg-primary/30 animate-float-up" style={{ animationDelay: '0s' }} />
-          <div className="absolute bottom-0 left-[35%] w-1 h-1 rounded-full bg-purple-500/25 animate-float-up" style={{ animationDelay: '4s' }} />
-          <div className="absolute bottom-0 left-[55%] w-1.5 h-1.5 rounded-full bg-primary/20 animate-float-up" style={{ animationDelay: '8s' }} />
-          <div className="absolute bottom-0 left-[75%] w-1 h-1 rounded-full bg-purple-500/30 animate-float-up" style={{ animationDelay: '12s' }} />
-          <div className="absolute bottom-0 left-[90%] w-1.5 h-1.5 rounded-full bg-primary/25 animate-float-up" style={{ animationDelay: '16s' }} />
+          {/* Rising particles - MORE OF THEM */}
+          <div className="absolute bottom-0 left-[10%] w-2.5 h-2.5 rounded-full bg-primary/50 animate-float-up" style={{ animationDelay: '0s' }} />
+          <div className="absolute bottom-0 left-[25%] w-2 h-2 rounded-full bg-purple-500/45 animate-float-up" style={{ animationDelay: '3s' }} />
+          <div className="absolute bottom-0 left-[40%] w-2.5 h-2.5 rounded-full bg-primary/40 animate-float-up" style={{ animationDelay: '6s' }} />
+          <div className="absolute bottom-0 left-[55%] w-2 h-2 rounded-full bg-emerald-500/40 animate-float-up" style={{ animationDelay: '9s' }} />
+          <div className="absolute bottom-0 left-[70%] w-2.5 h-2.5 rounded-full bg-purple-500/45 animate-float-up" style={{ animationDelay: '12s' }} />
+          <div className="absolute bottom-0 left-[85%] w-2 h-2 rounded-full bg-primary/40 animate-float-up" style={{ animationDelay: '15s' }} />
         </div>
         
-        {/* Moving lines */}
+        {/* Moving lines - BRIGHTER */}
         <div className="absolute inset-0">
           {/* Horizontal flowing lines */}
-          <div className="absolute top-[20%] left-0 w-[200px] h-px bg-gradient-to-r from-transparent via-primary/25 to-transparent animate-line-h" style={{ animationDelay: '0s' }} />
-          <div className="absolute top-[45%] left-0 w-[300px] h-px bg-gradient-to-r from-transparent via-purple-500/20 to-transparent animate-line-h" style={{ animationDelay: '4s' }} />
-          <div className="absolute top-[70%] left-0 w-[250px] h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent animate-line-h" style={{ animationDelay: '8s' }} />
+          <div className="absolute top-[20%] left-0 w-[300px] h-0.5 bg-gradient-to-r from-transparent via-primary/40 to-transparent animate-line-h" style={{ animationDelay: '0s' }} />
+          <div className="absolute top-[45%] left-0 w-[400px] h-0.5 bg-gradient-to-r from-transparent via-purple-500/35 to-transparent animate-line-h" style={{ animationDelay: '4s' }} />
+          <div className="absolute top-[70%] left-0 w-[350px] h-0.5 bg-gradient-to-r from-transparent via-primary/35 to-transparent animate-line-h" style={{ animationDelay: '8s' }} />
           
           {/* Vertical flowing lines */}
-          <div className="absolute top-0 left-[25%] w-px h-[150px] bg-gradient-to-b from-transparent via-primary/20 to-transparent animate-line-v" style={{ animationDelay: '2s' }} />
-          <div className="absolute top-0 left-[60%] w-px h-[200px] bg-gradient-to-b from-transparent via-purple-500/15 to-transparent animate-line-v" style={{ animationDelay: '6s' }} />
-          <div className="absolute top-0 left-[85%] w-px h-[180px] bg-gradient-to-b from-transparent via-primary/15 to-transparent animate-line-v" style={{ animationDelay: '10s' }} />
+          <div className="absolute top-0 left-[25%] w-0.5 h-[200px] bg-gradient-to-b from-transparent via-primary/35 to-transparent animate-line-v" style={{ animationDelay: '2s' }} />
+          <div className="absolute top-0 left-[60%] w-0.5 h-[250px] bg-gradient-to-b from-transparent via-purple-500/30 to-transparent animate-line-v" style={{ animationDelay: '6s' }} />
+          <div className="absolute top-0 left-[85%] w-0.5 h-[220px] bg-gradient-to-b from-transparent via-primary/30 to-transparent animate-line-v" style={{ animationDelay: '10s' }} />
           
           {/* Pulsing accent lines */}
-          <div className="absolute top-[35%] left-[10%] w-[100px] h-px bg-gradient-to-r from-primary/30 to-transparent animate-line-pulse origin-left" />
-          <div className="absolute top-[55%] right-[10%] w-[120px] h-px bg-gradient-to-l from-purple-500/25 to-transparent animate-line-pulse origin-right animation-delay-2000" />
-          <div className="absolute top-[80%] left-[30%] w-[80px] h-px bg-gradient-to-r from-primary/20 to-transparent animate-line-pulse origin-left animation-delay-4000" />
+          <div className="absolute top-[35%] left-[10%] w-[150px] h-0.5 bg-gradient-to-r from-primary/50 to-transparent animate-line-pulse origin-left" />
+          <div className="absolute top-[55%] right-[10%] w-[180px] h-0.5 bg-gradient-to-l from-purple-500/40 to-transparent animate-line-pulse origin-right animation-delay-2000" />
+          <div className="absolute top-[80%] left-[30%] w-[120px] h-0.5 bg-gradient-to-r from-primary/35 to-transparent animate-line-pulse origin-left animation-delay-4000" />
         </div>
+        
+        {/* Grid pattern overlay */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--primary)/0.03)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--primary)/0.03)_1px,transparent_1px)] bg-[size:60px_60px]" />
       </div>
 
       {/* Header */}
@@ -348,9 +355,9 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* FAQ Section */}
+      {/* FAQ Section - WIDER */}
       <section className="relative py-24 px-6">
-        <div className="max-w-3xl mx-auto relative z-10">
+        <div className="max-w-4xl mx-auto relative z-10">
           <AnimatePresence mode="wait">
             <motion.div
               key={`faq-header-${planType}-${language}`}
@@ -386,15 +393,26 @@ const Landing = () => {
 
       {/* CTA Section */}
       <section className="relative py-32 px-6 overflow-hidden">
-        {/* Full-width gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-purple-500/5 to-primary/8" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(var(--primary)/0.12)_0%,transparent_70%)]" />
+        {/* Enhanced gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/15 via-purple-500/10 to-primary/15" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(var(--primary)/0.2)_0%,transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,hsl(270_75%_60%/0.15)_0%,transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,hsl(var(--primary)/0.15)_0%,transparent_50%)]" />
         
-        {/* Floating decorative elements */}
-        <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-primary/10 rounded-full blur-2xl animate-blob" />
-        <div className="absolute bottom-1/4 right-1/4 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl animate-blob animation-delay-2000" />
+        {/* Animated decorative elements */}
+        <div className="absolute top-1/4 left-1/4 w-48 h-48 bg-primary/20 rounded-full blur-3xl animate-blob" />
+        <div className="absolute bottom-1/4 right-1/4 w-40 h-40 bg-purple-500/20 rounded-full blur-3xl animate-blob animation-delay-2000" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/10 rounded-full blur-[100px] animate-pulse" />
         
-        <div className="max-w-3xl mx-auto text-center relative z-10">
+        {/* Floating particles */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-20 left-[10%] w-3 h-3 rounded-full bg-primary/40 animate-float" />
+          <div className="absolute top-40 right-[15%] w-2 h-2 rounded-full bg-purple-500/40 animate-float animation-delay-2000" />
+          <div className="absolute bottom-32 left-[20%] w-4 h-4 rounded-full bg-primary/30 animate-float animation-delay-4000" />
+          <div className="absolute bottom-20 right-[25%] w-2 h-2 rounded-full bg-purple-500/30 animate-float animation-delay-6000" />
+        </div>
+        
+        <div className="max-w-4xl mx-auto text-center relative z-10">
           <AnimatePresence mode="wait">
             <motion.div
               key={`cta-${planType}-${language}`}
@@ -402,21 +420,76 @@ const Landing = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.4 }}
+              className="space-y-8"
             >
-              <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-6">
+              {/* Decorative badge */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/20 border border-primary/30"
+              >
+                <Sparkles className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium text-primary">
+                  {language === 'en' ? 'No credit card required' : 'Aucune carte requise'}
+                </span>
+              </motion.div>
+              
+              <h2 className="text-4xl md:text-6xl font-extrabold text-foreground leading-tight">
                 {t.cta.title}
               </h2>
-              <p className="text-xl text-muted-foreground mb-10 max-w-xl mx-auto">
+              
+              <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
                 {planType === 'individual' ? t.cta.individualSubtitle : t.cta.companySubtitle}
               </p>
-              <Button 
-                size="lg" 
-                className="text-lg px-12 py-7 shadow-xl shadow-primary/25 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 transition-all hover:scale-105" 
-                onClick={() => navigate('/dashboard')}
-              >
-                {planType === 'individual' ? t.cta.individualButton : t.cta.companyButton}
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
+              
+              {/* Feature pills */}
+              <div className="flex flex-wrap justify-center gap-3">
+                {[
+                  language === 'en' ? '✓ Free forever plan' : '✓ Plan gratuit à vie',
+                  language === 'en' ? '✓ Cancel anytime' : '✓ Annulez à tout moment',
+                  language === 'en' ? '✓ Instant access' : '✓ Accès instantané',
+                ].map((feature, i) => (
+                  <motion.span
+                    key={i}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 + i * 0.1 }}
+                    className="px-4 py-2 rounded-full bg-card/50 border border-border/50 text-sm text-muted-foreground backdrop-blur-sm"
+                  >
+                    {feature}
+                  </motion.span>
+                ))}
+              </div>
+              
+              {/* CTA Button with glow effect */}
+              <div className="relative inline-block">
+                <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-primary to-purple-600 blur-xl opacity-50 animate-pulse" />
+                <Button 
+                  size="lg" 
+                  className="relative text-lg px-14 py-8 shadow-2xl shadow-primary/30 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 transition-all hover:scale-105 rounded-xl" 
+                  onClick={() => navigate('/dashboard')}
+                >
+                  {planType === 'individual' ? t.cta.individualButton : t.cta.companyButton}
+                  <ArrowRight className="w-6 h-6 ml-2" />
+                </Button>
+              </div>
+              
+              {/* Social proof */}
+              <div className="flex items-center justify-center gap-4 pt-4">
+                <div className="flex -space-x-3">
+                  {['M', 'S', 'T', 'A'].map((initial, i) => (
+                    <div
+                      key={i}
+                      className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/30 to-purple-500/30 border-2 border-background flex items-center justify-center text-sm font-bold text-primary"
+                    >
+                      {initial}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-semibold text-foreground">1,247</span> {language === 'en' ? 'learners joined this week' : 'apprenants cette semaine'}
+                </p>
+              </div>
             </motion.div>
           </AnimatePresence>
         </div>
