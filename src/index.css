@@ -128,6 +128,14 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* Smooth theme transition */
+  html,
+  html *,
+  html *::before,
+  html *::after {
+    transition: background-color 0.4s ease, border-color 0.4s ease, color 0.3s ease;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
   }
@@ -259,6 +267,48 @@
   }
 }
 
+/* Floating particles animation */
+@keyframes float-up {
+  0% {
+    transform: translateY(100vh) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.6;
+  }
+  90% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(-100vh) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+@keyframes drift {
+  0%, 100% {
+    transform: translateX(0) translateY(0);
+  }
+  25% {
+    transform: translateX(30px) translateY(-20px);
+  }
+  50% {
+    transform: translateX(-20px) translateY(-40px);
+  }
+  75% {
+    transform: translateX(20px) translateY(-20px);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
 .animate-blob {
   animation: blob 12s ease-in-out infinite;
 }
@@ -271,6 +321,22 @@
   animation-delay: 4s;
 }
 
+.animation-delay-6000 {
+  animation-delay: 6s;
+}
+
 .animate-gradient {
   animation: gradient 4s ease infinite;
+}
+
+.animate-float-up {
+  animation: float-up 20s linear infinite;
+}
+
+.animate-drift {
+  animation: drift 15s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  animation: shimmer 8s linear infinite;
 }
