@@ -171,7 +171,7 @@ serve(async (req) => {
     console.log(`Generating course: theme="${theme}", minutes=${dailyMinutes}, level=${level}`);
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    const PERPLEXITY_API_KEY = Deno.env.get('PERPLEXITY_API_KEY');
+    const PERPLEXITY_API_KEY = Deno.env.get('perplexity');
     
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
