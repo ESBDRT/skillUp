@@ -89,7 +89,7 @@ serve(async (req) => {
 
     const hasPlan = coursePlan && coursePlan.days && coursePlan.days.length > 0;
     const maxSlides = 5;
-    const quizCount = 2;
+    const quizCount = 3;
 
     const response = await fetch('https://api.featherless.ai/v1/chat/completions', {
       method: 'POST',
@@ -102,15 +102,21 @@ serve(async (req) => {
         messages: [
           {
             role: 'user',
-            content: `Crée un cours éducatif sur "${theme}" avec ${maxSlides} slides et ${quizCount} quiz.
+            content: `Crée un cours éducatif COMPLET sur "${theme}" avec ${maxSlides} slides et ${quizCount} QCM.
 Niveau: ${levelNames[level]}
 
+RÈGLES IMPORTANTES :
+1. Chaque slide DOIT avoir un TITRE DESCRIPTIF en rapport avec le contenu (PAS "Slide 1", "Slide 2", etc.)
+2. Chaque slide DOIT contenir au moins 150-200 mots de contenu riche avec des **mots en gras**
+3. Les quiz sont UNIQUEMENT des QCM (type: "quiz") avec 4 options et correctIndex
+4. PAS de flashcard, SEULEMENT des QCM
+
 Tu DOIS répondre UNIQUEMENT avec ce JSON, sans texte avant ou après :
-{"title":"Titre du cours","description":"Description courte","category":"Science","icon":"🔬","lessonSections":[{"title":"Slide 1","content":"Contenu de 100 mots avec des **mots en gras**. Explique le concept avec un exemple concret.","imageKeyword":"keyword english"}],"quizQuestions":[{"type":"quiz","question":"Question?","options":["Option A","Option B","Option C","Option D"],"correctIndex":0},{"type":"flashcard","question":"Concept?","answer":"Réponse détaillée de 50 mots"}]}`
+{"title":"Titre du cours","description":"Description courte","category":"Science","icon":"🔬","lessonSections":[{"title":"Titre descriptif de la section","content":"Contenu RICHE de 150-200 mots minimum. Explique le concept en détail avec des **mots importants en gras**. Donne des exemples concrets et des applications pratiques. Utilise des analogies pour rendre le sujet accessible.","imageKeyword":"keyword english"}],"quizQuestions":[{"type":"quiz","question":"Question claire et précise ?","options":["Bonne réponse détaillée","Mauvaise réponse plausible 1","Mauvaise réponse plausible 2","Mauvaise réponse plausible 3"],"correctIndex":0}]}`
           }
         ],
         max_tokens: 4096,
-        temperature: 0.4
+        temperature: 0.5
       })
     });
 
@@ -161,7 +167,7 @@ Tu DOIS répondre UNIQUEMENT avec ce JSON, sans texte avant ou après :
       }
     }
     
-    // Fallback: Generate basic course
+    // Fallback: Generate basic course with descriptive titles
     if (!courseData || !courseData.lessonSections) {
       console.log('Using fallback course structure');
       courseData = {
@@ -171,18 +177,18 @@ Tu DOIS répondre UNIQUEMENT avec ce JSON, sans texte avant ou après :
         icon: '📚',
         lessonSections: [
           {
-            title: `Introduction à ${theme}`,
-            content: `**${theme}** est un sujet fascinant que nous allons explorer ensemble. Ce cours vous permettra de comprendre les concepts fondamentaux et de les appliquer dans des situations concrètes. Nous commencerons par les bases avant d'approfondir progressivement.`,
+            title: `Introduction et fondamentaux de ${theme}`,
+            content: `**${theme}** est un sujet fascinant que nous allons explorer ensemble dans ce cours complet. Ce premier module vous permettra de comprendre les **concepts fondamentaux** et de les appliquer dans des situations concrètes de la vie quotidienne. Nous commencerons par les bases essentielles avant d'approfondir progressivement votre compréhension. L'objectif est de vous donner une vision claire et structurée du sujet, avec des exemples pratiques qui vous aideront à mieux retenir les informations. À la fin de ce module, vous aurez acquis les connaissances de base nécessaires pour aborder les concepts plus avancés.`,
             imageKeyword: theme.split(' ')[0]
           },
           {
-            title: 'Les concepts clés',
-            content: `Pour bien comprendre **${theme}**, il faut maîtriser plusieurs concepts importants. Nous allons les découvrir un par un, avec des exemples pratiques pour faciliter l'apprentissage.`,
+            title: `Les concepts clés à maîtriser`,
+            content: `Pour bien comprendre **${theme}**, il est essentiel de maîtriser plusieurs **concepts importants** qui forment la base de ce domaine. Dans cette section, nous allons découvrir ces concepts un par un, avec des exemples pratiques et des explications détaillées pour faciliter votre apprentissage. Chaque notion sera présentée de manière progressive, en partant du plus simple vers le plus complexe. Vous découvrirez comment ces concepts s'articulent entre eux et pourquoi ils sont fondamentaux pour une bonne compréhension du sujet. Des analogies concrètes vous aideront à visualiser et mémoriser ces notions essentielles.`,
             imageKeyword: 'learning concept'
           },
           {
-            title: 'Applications pratiques',
-            content: `**${theme}** a de nombreuses applications dans la vie quotidienne. Comprendre ces applications vous aidera à mieux retenir les concepts théoriques et à les utiliser efficacement.`,
+            title: `Applications pratiques et exemples concrets`,
+            content: `**${theme}** a de nombreuses **applications dans la vie quotidienne** que vous ne soupçonnez peut-être pas. Dans cette section, nous explorerons comment les concepts théoriques se traduisent en situations réelles et pratiques. Comprendre ces applications vous aidera non seulement à mieux retenir les notions apprises, mais aussi à les utiliser efficacement dans votre quotidien. Nous verrons des exemples variés issus de différents domaines, ce qui vous permettra de constater l'étendue et l'importance de ce sujet. Ces applications concrètes rendront votre apprentissage plus significatif et mémorable.`,
             imageKeyword: 'practice application'
           }
         ],
@@ -191,17 +197,34 @@ Tu DOIS répondre UNIQUEMENT avec ce JSON, sans texte avant ou après :
             type: 'quiz',
             question: `Quel est l'objectif principal de l'étude de ${theme} ?`,
             options: [
-              'Comprendre les concepts fondamentaux',
-              'Mémoriser des formules',
-              'Passer un examen',
-              'Aucune réponse'
+              'Comprendre les concepts fondamentaux et leurs applications',
+              'Mémoriser des formules sans les comprendre',
+              'Simplement passer un examen',
+              'Aucun objectif particulier'
             ],
             correctIndex: 0
           },
           {
-            type: 'flashcard',
-            question: `Qu'est-ce que ${theme} ?`,
-            answer: `${theme} est un domaine d'étude qui permet de comprendre des concepts importants et de les appliquer dans diverses situations pratiques.`
+            type: 'quiz',
+            question: `Quelle approche est recommandée pour bien apprendre ${theme} ?`,
+            options: [
+              'Partir des bases vers les concepts avancés progressivement',
+              'Commencer directement par les notions les plus complexes',
+              'Ignorer les exemples pratiques',
+              'Ne pas chercher à comprendre les liens entre concepts'
+            ],
+            correctIndex: 0
+          },
+          {
+            type: 'quiz',
+            question: `Pourquoi les applications pratiques sont-elles importantes dans l'apprentissage de ${theme} ?`,
+            options: [
+              'Elles aident à mieux retenir et utiliser les concepts',
+              'Elles ne servent à rien',
+              'Elles compliquent l\'apprentissage',
+              'Elles sont réservées aux experts uniquement'
+            ],
+            correctIndex: 0
           }
         ]
       };
@@ -216,26 +239,33 @@ Tu DOIS répondre UNIQUEMENT avec ce JSON, sans texte avant ou après :
 
     // Generate images
     const imagePromises = limitedSections.map((section: any) => {
-      const keyword = section.imageKeyword || theme;
+      const keyword = section.imageKeyword || section.title || theme;
       return generateImage(keyword, theme, SUPABASE_URL, SUPABASE_ANON_KEY);
     });
     const imageUrls = await Promise.all(imagePromises);
 
-    // Add info cards
+    // Add info cards with descriptive titles
     limitedSections.forEach((section: any, index: number) => {
+      // Ensure title is descriptive, not generic
+      let title = section.title || `Partie ${index + 1}: ${theme}`;
+      if (title.toLowerCase().includes('slide')) {
+        title = section.content?.substring(0, 50).split('.')[0] || `Concept ${index + 1} de ${theme}`;
+      }
+      
       cards.push({
         type: 'info',
-        title: section.title || `Slide ${index + 1}`,
+        title: title,
         content: section.content || 'Contenu du cours.',
         image_url: imageUrls[index],
         xpReward: 15
       });
     });
 
-    // Add quiz cards
+    // Add ONLY QCM quiz cards
     const limitedQuizzes = (courseData.quizQuestions || []).slice(0, quizCount);
     limitedQuizzes.forEach((quiz: any, index: number) => {
-      if (quiz.type === 'quiz' && Array.isArray(quiz.options)) {
+      // Force all quizzes to be QCM type
+      if (Array.isArray(quiz.options) && quiz.options.length >= 2) {
         const formattedOptions = quiz.options.map((opt: any, i: number) => ({
           id: `opt-${index}-${i}`,
           text: typeof opt === 'string' ? opt : opt.text || `Option ${i + 1}`,
@@ -244,18 +274,24 @@ Tu DOIS répondre UNIQUEMENT avec ce JSON, sans texte avant ou après :
         
         cards.push({
           type: 'quiz',
-          title: `Question ${index + 1}`,
+          title: `Quiz ${index + 1}`,
           content: quiz.question,
           options: formattedOptions,
           xpReward: 25
         });
       } else {
+        // Convert to QCM if not properly formatted
         cards.push({
-          type: 'flashcard',
-          title: `Mémorisation ${index + 1}`,
-          content: quiz.question,
-          flashcard_back: quiz.answer || 'Réponse à découvrir.',
-          xpReward: 20
+          type: 'quiz',
+          title: `Quiz ${index + 1}`,
+          content: quiz.question || `Question sur ${theme}`,
+          options: [
+            { id: `opt-${index}-0`, text: 'Vrai', isCorrect: true },
+            { id: `opt-${index}-1`, text: 'Faux', isCorrect: false },
+            { id: `opt-${index}-2`, text: 'Partiellement vrai', isCorrect: false },
+            { id: `opt-${index}-3`, text: 'Aucune de ces réponses', isCorrect: false }
+          ],
+          xpReward: 25
         });
       }
     });
