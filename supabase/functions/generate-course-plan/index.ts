@@ -36,10 +36,10 @@ serve(async (req) => {
     
     console.log(`Generating course plan: theme="${theme}", minutes=${dailyMinutes}, level=${level}, days=${durationDays}`);
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const FEATHERLESS_API_KEY = Deno.env.get('API');
     
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    if (!FEATHERLESS_API_KEY) {
+      throw new Error('API key is not configured');
     }
 
     const knownConceptsInstruction = knownKeywords && knownKeywords.length > 0
@@ -64,85 +64,40 @@ Pour chaque jour, définis :
 2. Les 2-4 concepts clés à couvrir
 3. Une progression logique du jour 1 au jour ${durationDays}
 
-Le planning doit couvrir tous les aspects essentiels du sujet de manière structurée.`;
+Le planning doit couvrir tous les aspects essentiels du sujet de manière structurée.
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+RÉPONDS UNIQUEMENT avec un JSON valide dans ce format exact :
+{
+  "courseTitle": "Titre global du cours (max 60 caractères)",
+  "courseDescription": "Description du parcours en 2-3 phrases",
+  "category": "Science|Histoire|Psychologie|Finance|Santé|Art|Technologie|Langue|Sport|Cuisine|Autre",
+  "icon": "📚",
+  "days": [
+    {"day": 1, "title": "Titre session jour 1", "concepts": ["Concept 1", "Concept 2"]},
+    {"day": 2, "title": "Titre session jour 2", "concepts": ["Concept 3", "Concept 4"]}
+  ],
+  "totalConcepts": 4
+}`;
+
+    const response = await fetch('https://api.featherless.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${FEATHERLESS_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
+        model: 'mistralai/Mistral-7B-v0.1',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        tools: [
-          {
-            type: 'function',
-            function: {
-              name: 'create_course_plan',
-              description: 'Crée un planning de cours structuré par jour avec les concepts à couvrir',
-              parameters: {
-                type: 'object',
-                properties: {
-                  courseTitle: {
-                    type: 'string',
-                    description: 'Titre global du cours (max 60 caractères)'
-                  },
-                  courseDescription: {
-                    type: 'string',
-                    description: 'Description du parcours en 2-3 phrases'
-                  },
-                  category: {
-                    type: 'string',
-                    description: 'Catégorie (Science, Histoire, Psychologie, Finance, Santé, Art, Technologie, Langue, Sport, Cuisine, Autre)'
-                  },
-                  icon: {
-                    type: 'string',
-                    description: 'Un emoji représentant le cours'
-                  },
-                  days: {
-                    type: 'array',
-                    description: 'Planning jour par jour',
-                    items: {
-                      type: 'object',
-                      properties: {
-                        day: {
-                          type: 'number',
-                          description: 'Numéro du jour (1, 2, 3...)'
-                        },
-                        title: {
-                          type: 'string',
-                          description: 'Titre de la session du jour (max 40 caractères)'
-                        },
-                        concepts: {
-                          type: 'array',
-                          items: { type: 'string' },
-                          description: 'Liste des 2-4 concepts clés à couvrir ce jour'
-                        }
-                      },
-                      required: ['day', 'title', 'concepts']
-                    }
-                  },
-                  totalConcepts: {
-                    type: 'number',
-                    description: 'Nombre total de concepts dans le cours'
-                  }
-                },
-                required: ['courseTitle', 'courseDescription', 'category', 'icon', 'days', 'totalConcepts']
-              }
-            }
-          }
-        ],
-        tool_choice: { type: 'function', function: { name: 'create_course_plan' } }
+        max_tokens: 2048
       })
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('AI Gateway error:', response.status, errorText);
+      console.error('Featherless API error:', response.status, errorText);
       
       if (response.status === 429) {
         return new Response(JSON.stringify({ 
@@ -155,43 +110,30 @@ Le planning doit couvrir tous les aspects essentiels du sujet de manière struct
       
       if (response.status === 402) {
         return new Response(JSON.stringify({ 
-          error: 'Crédits insuffisants. Veuillez recharger votre compte.' 
+          error: 'Crédits insuffisants.' 
         }), {
           status: 402,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
       
-      throw new Error(`AI Gateway error: ${response.status}`);
+      throw new Error(`API error: ${response.status}`);
     }
 
     const aiResponse = await response.json();
     console.log('AI Response received for course plan');
 
     let planData;
-    const toolCall = aiResponse.choices?.[0]?.message?.tool_calls?.[0];
+    const messageContent = aiResponse.choices?.[0]?.message?.content;
     
-    if (toolCall && toolCall.function?.name === 'create_course_plan') {
+    if (messageContent) {
       try {
-        planData = JSON.parse(toolCall.function.arguments);
-        console.log('Parsed course plan from tool call');
-      } catch (parseError) {
-        console.error('Failed to parse tool call arguments:', parseError);
-      }
-    }
-
-    // Fallback to content parsing
-    if (!planData) {
-      const messageContent = aiResponse.choices?.[0]?.message?.content;
-      if (messageContent) {
-        try {
-          const jsonMatch = messageContent.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            planData = JSON.parse(jsonMatch[0]);
-          }
-        } catch (e) {
-          console.error('Failed to parse message content:', e);
+        const jsonMatch = messageContent.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          planData = JSON.parse(jsonMatch[0]);
         }
+      } catch (e) {
+        console.error('Failed to parse message content:', e);
       }
     }
 

@@ -21,9 +21,9 @@ serve(async (req) => {
       questionType: 'flashcard' | 'qcm' | 'open' 
     };
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const FEATHERLESS_API_KEY = Deno.env.get("API");
+    if (!FEATHERLESS_API_KEY) {
+      throw new Error("API key is not configured");
     }
 
     let prompt = '';
@@ -75,14 +75,14 @@ Retourne UNIQUEMENT un JSON valide avec cette structure exacte:
 }`;
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.featherless.ai/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${FEATHERLESS_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "mistralai/Mistral-7B-v0.1",
         messages: [
           { 
             role: "system", 
@@ -90,6 +90,7 @@ Retourne UNIQUEMENT un JSON valide avec cette structure exacte:
           },
           { role: "user", content: prompt }
         ],
+        max_tokens: 1024,
         temperature: 0.7,
       }),
     });
@@ -101,7 +102,7 @@ Retourne UNIQUEMENT un JSON valide avec cette structure exacte:
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      throw new Error(`AI gateway error: ${response.status}`);
+      throw new Error(`API error: ${response.status}`);
     }
 
     const data = await response.json();

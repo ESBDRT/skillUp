@@ -20,22 +20,22 @@ serve(async (req) => {
   try {
     const { question, expectedAnswer, userAnswer, cardTitle }: AnalyzeRequest = await req.json();
     
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const FEATHERLESS_API_KEY = Deno.env.get('API');
     
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    if (!FEATHERLESS_API_KEY) {
+      throw new Error('API key is not configured');
     }
 
     console.log(`Analyzing response for: ${cardTitle}`);
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch('https://api.featherless.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${FEATHERLESS_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'mistralai/Mistral-7B-v0.1',
         messages: [
           {
             role: 'system',
@@ -62,12 +62,13 @@ Réponse de l'étudiant: "${userAnswer}"
 
 Évalue cette réponse.`
           }
-        ]
+        ],
+        max_tokens: 512
       })
     });
 
     if (!response.ok) {
-      throw new Error(`AI Gateway error: ${response.status}`);
+      throw new Error(`API error: ${response.status}`);
     }
 
     const aiResponse = await response.json();
