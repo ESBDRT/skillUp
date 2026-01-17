@@ -1,1 +1,19 @@
 project_id = "ihsinbaslejrsxeegryy"
+
+[functions.analyze-theme]
+verify_jwt = false
+
+[functions.generate-course]
+verify_jwt = false
+
+[functions.generate-course-plan]
+verify_jwt = false
+
+[functions.save-generated-course]
+verify_jwt = false
+
+[functions.import-courses]
+verify_jwt = false
+
+[functions.elevenlabs-tts]
+verify_jwt = false

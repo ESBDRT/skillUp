@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, Loader2, BookOpen, Clock, GraduationCap, AlertCircle, CheckCircle2, Lightbulb, X, CalendarDays } from 'lucide-react';
+import { Sparkles, Loader2, BookOpen, Clock, GraduationCap, AlertCircle, CheckCircle2, Lightbulb, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { CoursePlanPreview } from './CoursePlanPreview';
+
 interface AIGenerationFormProps {
-  onGenerate: (theme: string, minutes: number, level: 'beginner' | 'intermediate' | 'expert', durationDays: number, knownKeywords?: string[]) => void;
+  onGenerate: (theme: string, minutes: number, level: 'beginner' | 'intermediate' | 'expert', durationDays: number, knownKeywords?: string[], coursePlan?: CoursePlan) => void;
   isGenerating: boolean;
 }
 
@@ -23,6 +24,25 @@ interface ThemeAnalysis {
   feedback: string;
   suggestedTheme: string | null;
   keywords: Keyword[];
+}
+
+interface DayPlan {
+  day: number;
+  title: string;
+  concepts: string[];
+  estimatedMinutes: number;
+}
+
+interface CoursePlan {
+  courseTitle: string;
+  courseDescription: string;
+  category: string;
+  icon: string;
+  level: string;
+  dailyMinutes: number;
+  durationDays: number;
+  days: DayPlan[];
+  totalConcepts: number;
 }
 
 const minutesOptions = [
@@ -57,6 +77,10 @@ export function AIGenerationForm({ onGenerate, isGenerating }: AIGenerationFormP
   const [analysis, setAnalysis] = useState<ThemeAnalysis | null>(null);
   const [selectedKeywords, setSelectedKeywords] = useState<Set<string>>(new Set());
   const [analyzeTimeout, setAnalyzeTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  // Course plan state (step 2)
+  const [coursePlan, setCoursePlan] = useState<CoursePlan | null>(null);
+  const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
 
   // Debounced theme analysis when theme or level changes
   useEffect(() => {
@@ -100,7 +124,6 @@ export function AIGenerationForm({ onGenerate, isGenerating }: AIGenerationFormP
       setSelectedKeywords(new Set());
     } catch (error) {
       console.error('Error analyzing theme:', error);
-      // Silently fail - don't block the user
       setAnalysis(null);
     } finally {
       setIsAnalyzing(false);
@@ -125,18 +148,77 @@ export function AIGenerationForm({ onGenerate, isGenerating }: AIGenerationFormP
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Step 1: Generate the course plan
+  const handleGeneratePlan = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (theme.trim() && !isGenerating) {
+    if (!theme.trim() || isGeneratingPlan) return;
+
+    setIsGeneratingPlan(true);
+    try {
       const knownKeywords = analysis?.keywords
         .filter(k => selectedKeywords.has(k.id))
         .map(k => k.label) || [];
-      onGenerate(theme.trim(), selectedMinutes, selectedLevel, selectedDuration, knownKeywords);
+
+      const { data, error } = await supabase.functions.invoke('generate-course-plan', {
+        body: {
+          theme: theme.trim(),
+          dailyMinutes: selectedMinutes,
+          level: selectedLevel,
+          durationDays: selectedDuration,
+          knownKeywords
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      setCoursePlan(data);
+      toast.success('Planning généré ! Vérifiez et validez pour créer le contenu.');
+    } catch (error) {
+      console.error('Error generating course plan:', error);
+      toast.error(error instanceof Error ? error.message : 'Erreur lors de la génération du planning');
+    } finally {
+      setIsGeneratingPlan(false);
     }
   };
 
+  // Step 2: Confirm and generate full content
+  const handleConfirmPlan = (confirmedPlan: CoursePlan) => {
+    const knownKeywords = analysis?.keywords
+      .filter(k => selectedKeywords.has(k.id))
+      .map(k => k.label) || [];
+    
+    onGenerate(
+      theme.trim(),
+      selectedMinutes,
+      selectedLevel,
+      selectedDuration,
+      knownKeywords,
+      confirmedPlan
+    );
+  };
+
+  const handleCancelPlan = () => {
+    setCoursePlan(null);
+  };
+
+  // If we have a plan, show the preview
+  if (coursePlan) {
+    return (
+      <CoursePlanPreview
+        plan={coursePlan}
+        onConfirm={handleConfirmPlan}
+        onCancel={handleCancelPlan}
+        isGenerating={isGenerating}
+      />
+    );
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleGeneratePlan} className="space-y-6">
       {/* Theme Input */}
       <div className="space-y-2">
         <Label htmlFor="theme" className="flex items-center gap-2 text-base font-medium">
@@ -153,7 +235,7 @@ export function AIGenerationForm({ onGenerate, isGenerating }: AIGenerationFormP
               "text-base h-12 pr-10",
               analysis && !analysis.isValid && "border-amber-500 focus-visible:ring-amber-500"
             )}
-            disabled={isGenerating}
+            disabled={isGenerating || isGeneratingPlan}
           />
           {isAnalyzing && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -205,7 +287,7 @@ export function AIGenerationForm({ onGenerate, isGenerating }: AIGenerationFormP
               key={option.value}
               type="button"
               onClick={() => setSelectedMinutes(option.value)}
-              disabled={isGenerating}
+              disabled={isGenerating || isGeneratingPlan}
               className={cn(
                 "p-3 rounded-xl border-2 transition-all text-left",
                 selectedMinutes === option.value
@@ -232,7 +314,7 @@ export function AIGenerationForm({ onGenerate, isGenerating }: AIGenerationFormP
               key={option.value}
               type="button"
               onClick={() => setSelectedDuration(option.value)}
-              disabled={isGenerating}
+              disabled={isGenerating || isGeneratingPlan}
               className={cn(
                 "p-3 rounded-xl border-2 transition-all text-left",
                 selectedDuration === option.value
@@ -262,7 +344,7 @@ export function AIGenerationForm({ onGenerate, isGenerating }: AIGenerationFormP
               key={option.value}
               type="button"
               onClick={() => setSelectedLevel(option.value)}
-              disabled={isGenerating}
+              disabled={isGenerating || isGeneratingPlan}
               className={cn(
                 "p-3 rounded-xl border-2 transition-all text-left flex items-start gap-3",
                 selectedLevel === option.value
@@ -280,14 +362,14 @@ export function AIGenerationForm({ onGenerate, isGenerating }: AIGenerationFormP
         </div>
       </div>
 
-      {/* Keywords Selection - Only show when analysis is complete and valid */}
+      {/* Keywords Selection */}
       {analysis?.isValid && analysis.keywords && analysis.keywords.length > 0 && (
         <div className="space-y-3">
           <Label className="flex items-center gap-2 text-base font-medium">
             <CheckCircle2 className="w-4 h-4" />
             Concepts que vous connaissez déjà
             <span className="text-xs font-normal text-muted-foreground ml-1">
-              (optionnel - sélectionnez ce que vous maîtrisez)
+              (optionnel)
             </span>
           </Label>
           <div className="flex flex-wrap gap-2">
@@ -296,7 +378,7 @@ export function AIGenerationForm({ onGenerate, isGenerating }: AIGenerationFormP
                 key={keyword.id}
                 type="button"
                 onClick={() => toggleKeyword(keyword.id)}
-                disabled={isGenerating}
+                disabled={isGenerating || isGeneratingPlan}
                 className={cn(
                   "group relative px-3 py-2 rounded-full text-sm transition-all",
                   selectedKeywords.has(keyword.id)
@@ -316,32 +398,35 @@ export function AIGenerationForm({ onGenerate, isGenerating }: AIGenerationFormP
           </div>
           {selectedKeywords.size > 0 && (
             <p className="text-sm text-muted-foreground">
-              {selectedKeywords.size} concept{selectedKeywords.size > 1 ? 's' : ''} sélectionné{selectedKeywords.size > 1 ? 's' : ''} - 
-              le cours sera adapté en conséquence
+              {selectedKeywords.size} concept{selectedKeywords.size > 1 ? 's' : ''} sélectionné{selectedKeywords.size > 1 ? 's' : ''}
             </p>
           )}
         </div>
       )}
 
-      {/* Generate Button */}
+      {/* Generate Plan Button */}
       <Button
         type="submit"
         size="lg"
-        disabled={!theme.trim() || isGenerating || isAnalyzing}
+        disabled={!theme.trim() || isGenerating || isGeneratingPlan || isAnalyzing}
         className="w-full h-14 text-lg gap-3"
       >
-        {isGenerating ? (
+        {isGeneratingPlan ? (
           <>
             <Loader2 className="w-5 h-5 animate-spin" />
-            Génération en cours...
+            Génération du planning...
           </>
         ) : (
           <>
-            <Sparkles className="w-5 h-5" />
-            Générer avec l'IA
+            <CalendarDays className="w-5 h-5" />
+            Voir le planning proposé
           </>
         )}
       </Button>
+
+      <p className="text-xs text-center text-muted-foreground">
+        📋 Un planning avec les notions sera proposé avant la génération du contenu
+      </p>
     </form>
   );
 }

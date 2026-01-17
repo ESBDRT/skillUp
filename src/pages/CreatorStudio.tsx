@@ -33,6 +33,25 @@ interface CourseCard {
   xpReward: number;
 }
 
+interface DayPlan {
+  day: number;
+  title: string;
+  concepts: string[];
+  estimatedMinutes: number;
+}
+
+interface CoursePlan {
+  courseTitle: string;
+  courseDescription: string;
+  category: string;
+  icon: string;
+  level: string;
+  dailyMinutes: number;
+  durationDays: number;
+  days: DayPlan[];
+  totalConcepts: number;
+}
+
 interface GeneratedCourse {
   title: string;
   description: string;
@@ -79,7 +98,7 @@ export default function CreatorStudio() {
   const [cards, setCards] = useState<CourseCard[]>([]);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
 
-  const handleAIGenerate = async (theme: string, minutes: number, level: 'beginner' | 'intermediate' | 'expert', durationDays: number, knownKeywords?: string[]) => {
+  const handleAIGenerate = async (theme: string, minutes: number, level: 'beginner' | 'intermediate' | 'expert', durationDays: number, knownKeywords?: string[], coursePlan?: CoursePlan) => {
     setIsGenerating(true);
     setMode('ai');
 
@@ -90,7 +109,14 @@ export default function CreatorStudio() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ theme, dailyMinutes: minutes, level, durationDays, knownKeywords }),
+        body: JSON.stringify({ 
+          theme, 
+          dailyMinutes: minutes, 
+          level, 
+          durationDays, 
+          knownKeywords,
+          coursePlan // Pass the validated plan to generate-course
+        }),
       });
 
       if (!response.ok) {

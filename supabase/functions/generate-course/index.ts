@@ -5,11 +5,31 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+interface DayPlan {
+  day: number;
+  title: string;
+  concepts: string[];
+  estimatedMinutes: number;
+}
+
+interface CoursePlan {
+  courseTitle: string;
+  courseDescription: string;
+  category: string;
+  icon: string;
+  level: string;
+  dailyMinutes: number;
+  durationDays: number;
+  days: DayPlan[];
+  totalConcepts: number;
+}
+
 interface GenerateCourseRequest {
   theme: string;
   dailyMinutes: number;
   level: 'beginner' | 'intermediate' | 'expert';
   knownKeywords?: string[];
+  coursePlan?: CoursePlan;
 }
 
 const levelInstructions = {
@@ -61,9 +81,9 @@ serve(async (req) => {
   }
 
   try {
-    const { theme, dailyMinutes, level, knownKeywords }: GenerateCourseRequest = await req.json();
+    const { theme, dailyMinutes, level, knownKeywords, coursePlan }: GenerateCourseRequest = await req.json();
     
-    console.log(`Generating course: theme="${theme}", minutes=${dailyMinutes}, level=${level}, knownKeywords=${knownKeywords?.length || 0}`);
+    console.log(`Generating course: theme="${theme}", minutes=${dailyMinutes}, level=${level}, knownKeywords=${knownKeywords?.length || 0}, hasPlan=${!!coursePlan}`);
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
@@ -71,10 +91,15 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    // Calculate structure based on daily minutes
-    // More sections = more slides, better granularity
-    const sectionCount = dailyMinutes <= 5 ? 4 : dailyMinutes <= 10 ? 6 : dailyMinutes <= 15 ? 8 : 10;
-    const quizCount = Math.max(3, Math.floor(dailyMinutes / 3));
+    // If we have a course plan, use it to guide generation
+    const hasPlan = coursePlan && coursePlan.days && coursePlan.days.length > 0;
+    
+    // Calculate total concepts from plan or estimate
+    const totalConcepts = hasPlan 
+      ? coursePlan.days.reduce((sum, day) => sum + day.concepts.length, 0)
+      : (dailyMinutes <= 5 ? 4 : dailyMinutes <= 10 ? 6 : dailyMinutes <= 15 ? 8 : 10);
+    
+    const quizCount = Math.max(3, Math.floor(totalConcepts / 2));
 
     const knownConceptsInstruction = knownKeywords && knownKeywords.length > 0
       ? `\n\nIMPORTANT - ADAPTATION AU NIVEAU DE L'APPRENANT :
@@ -85,10 +110,24 @@ L'apprenant a indiqué qu'il connaît déjà ces concepts : ${knownKeywords.join
 - Proposer des nuances et des approfondissements sur ces sujets`
       : '';
 
+    // Build the plan instruction if we have a course plan
+    const planInstruction = hasPlan 
+      ? `\n\nPLANNING VALIDÉ PAR L'UTILISATEUR - SUIT CE PLAN EXACTEMENT :
+Titre du cours : "${coursePlan.courseTitle}"
+Description : "${coursePlan.courseDescription}"
+Catégorie : ${coursePlan.category}
+Icône : ${coursePlan.icon}
+
+${coursePlan.days.map(day => `JOUR ${day.day} - "${day.title}" :
+  Concepts à couvrir : ${day.concepts.join(', ')}`).join('\n\n')}
+
+IMPORTANT : Crée une slide pour CHAQUE concept listé ci-dessus. Le contenu doit correspondre exactement aux concepts du planning.`
+      : '';
+
     const systemPrompt = `Tu es un expert pédagogue qui crée des cours éducatifs de haute qualité, structurés comme des présentations modernes type slides.
 
 Niveau de difficulté : ${levelNames[level]}
-${levelInstructions[level]}${knownConceptsInstruction}
+${levelInstructions[level]}${knownConceptsInstruction}${planInstruction}
 
 Tu dois créer un VRAI COURS structuré en SLIDES INDIVIDUELLES :
 - Chaque section = 1 slide séparée avec un concept clair
@@ -98,16 +137,24 @@ Tu dois créer un VRAI COURS structuré en SLIDES INDIVIDUELLES :
 
 Le contenu doit être en français, éducatif, engageant et bien structuré.`;
 
-    const userPrompt = `Crée un cours en ${sectionCount} SLIDES sur : "${theme}"
+    const userPrompt = hasPlan 
+      ? `Crée le contenu complet du cours "${coursePlan.courseTitle}" en suivant EXACTEMENT le planning validé.
+
+Pour chaque concept du planning, crée une slide avec :
+- title: Titre du concept (reprends le concept du planning)
+- content: Explication claire et pédagogique (3-5 phrases)
+- imageKeyword: 2-3 mots anglais pour l'image
+
+Ajoute aussi ${quizCount} questions de test variées (QCM, questions ouvertes, flashcards, sliders).`
+      : `Crée un cours en ${totalConcepts} SLIDES sur : "${theme}"
 
 STRUCTURE DU COURS EN SLIDES :
 
-1. SLIDES DE CONTENU (${sectionCount} slides) :
+1. SLIDES DE CONTENU (${totalConcepts} slides) :
    Chaque slide contient UN concept clé avec :
    - title: Titre court et accrocheur (max 50 caractères)
    - content: Explication claire (3-5 phrases, ~100 mots max)
    - imageKeyword: 2-3 mots anglais pour l'image (ex: "brain neurons", "coffee beans")
-
 2. TESTS VARIÉS (${quizCount} questions de TYPES DIFFÉRENTS) :
    OBLIGATOIRE - Utilise ces types dans l'ordre :
    
