@@ -8,9 +8,44 @@ interface QuizCardProps {
   onComplete: (xp: number) => void;
 }
 
+// Normalize options to the expected format
+const normalizeOptions = (options: any): Array<{ id: string; text: string; isCorrect: boolean }> => {
+  if (!options || !Array.isArray(options)) return [];
+  
+  return options.map((option, index) => {
+    // If it's already in the correct format
+    if (typeof option === 'object' && 'text' in option && 'isCorrect' in option) {
+      return {
+        id: option.id || `opt-${index}`,
+        text: String(option.text),
+        isCorrect: Boolean(option.isCorrect),
+      };
+    }
+    
+    // If it's just a string
+    if (typeof option === 'string') {
+      return {
+        id: `opt-${index}`,
+        text: option,
+        isCorrect: false, // Will need correctIndex to determine
+      };
+    }
+    
+    // Fallback: try to extract text
+    return {
+      id: `opt-${index}`,
+      text: String(option?.text || option || ''),
+      isCorrect: Boolean(option?.isCorrect),
+    };
+  });
+};
+
 const QuizCard = ({ card, onComplete }: QuizCardProps) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [hasAnswered, setHasAnswered] = useState(false);
+
+  // Normalize options to ensure correct format
+  const normalizedOptions = normalizeOptions(card.options);
 
   const handleSelect = (optionId: string) => {
     if (hasAnswered) return;
@@ -18,7 +53,7 @@ const QuizCard = ({ card, onComplete }: QuizCardProps) => {
     setSelectedId(optionId);
     setHasAnswered(true);
 
-    const isCorrect = card.options?.find(o => o.id === optionId)?.isCorrect;
+    const isCorrect = normalizedOptions.find(o => o.id === optionId)?.isCorrect;
     
     setTimeout(() => {
       onComplete(isCorrect ? card.xpReward : 0);
@@ -40,7 +75,7 @@ const QuizCard = ({ card, onComplete }: QuizCardProps) => {
       </motion.div>
 
       <div className="space-y-3">
-        {card.options?.map((option, index) => {
+        {normalizedOptions.map((option, index) => {
           const isSelected = selectedId === option.id;
           const isCorrect = option.isCorrect;
           const showResult = hasAnswered && isSelected;
