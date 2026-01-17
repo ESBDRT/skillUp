@@ -8,6 +8,9 @@ import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import CoursePlayer from "./pages/CoursePlayer";
 import CreatorStudio from "./pages/CreatorStudio";
+import Brain from "./pages/Brain";
+import Explore from "./pages/Explore";
+import SmartSession from "./pages/SmartSession";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +27,9 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/course/:courseId" element={<CoursePlayer />} />
             <Route path="/create" element={<CreatorStudio />} />
+            <Route path="/brain" element={<Brain />} />
+            <Route path="/explore" element={<Explore />} />
+            <Route path="/smart-session" element={<SmartSession />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

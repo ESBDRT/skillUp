@@ -151,6 +151,51 @@ export type Database = {
         }
         Relationships: []
       }
+      memory_concepts: {
+        Row: {
+          concept_content: string | null
+          concept_title: string
+          course_id: string
+          created_at: string | null
+          ease_factor: number | null
+          id: string
+          interval_days: number | null
+          last_reviewed_at: string | null
+          memory_strength: number | null
+          next_review_at: string | null
+          repetitions: number | null
+          user_id: string
+        }
+        Insert: {
+          concept_content?: string | null
+          concept_title: string
+          course_id: string
+          created_at?: string | null
+          ease_factor?: number | null
+          id?: string
+          interval_days?: number | null
+          last_reviewed_at?: string | null
+          memory_strength?: number | null
+          next_review_at?: string | null
+          repetitions?: number | null
+          user_id: string
+        }
+        Update: {
+          concept_content?: string | null
+          concept_title?: string
+          course_id?: string
+          created_at?: string | null
+          ease_factor?: number | null
+          id?: string
+          interval_days?: number | null
+          last_reviewed_at?: string | null
+          memory_strength?: number | null
+          next_review_at?: string | null
+          repetitions?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
