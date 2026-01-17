@@ -5,9 +5,10 @@ import { useState } from 'react';
 interface FAQItemProps {
   question: string;
   answer: string;
+  index?: number;
 }
 
-const FAQItem = ({ question, answer }: FAQItemProps) => {
+const FAQItem = ({ question, answer, index = 0 }: FAQItemProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -15,18 +16,23 @@ const FAQItem = ({ question, answer }: FAQItemProps) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="border-b border-border"
+      transition={{ delay: index * 0.05 }}
+      className="border-b border-border group"
     >
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full py-5 flex items-center justify-between text-left hover:text-primary transition-colors"
+        className="w-full py-5 flex items-center justify-between text-left transition-colors"
       >
-        <span className="font-semibold text-foreground pr-4">{question}</span>
-        <ChevronDown 
-          className={`w-5 h-5 text-muted-foreground shrink-0 transition-transform duration-300 ${
-            isOpen ? 'rotate-180' : ''
-          }`} 
-        />
+        <span className="font-semibold text-foreground pr-4 group-hover:text-primary transition-colors">
+          {question}
+        </span>
+        <div className={`p-1 rounded-full transition-all duration-300 ${isOpen ? 'bg-primary/10' : 'bg-transparent group-hover:bg-muted'}`}>
+          <ChevronDown 
+            className={`w-5 h-5 shrink-0 transition-all duration-300 ${
+              isOpen ? 'rotate-180 text-primary' : 'text-muted-foreground'
+            }`} 
+          />
+        </div>
       </button>
       
       <AnimatePresence>
@@ -35,15 +41,19 @@ const FAQItem = ({ question, answer }: FAQItemProps) => {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
             className="overflow-hidden"
           >
-            <p 
-              className="pb-5 text-muted-foreground leading-relaxed"
-              dangerouslySetInnerHTML={{ 
-                __html: answer.replace(/\*\*(.*?)\*\*/g, '<strong class="text-primary font-bold">$1</strong>') 
-              }}
-            />
+            <div className="pb-5 pl-0">
+              <div className="p-4 bg-muted/30 rounded-xl border-l-4 border-primary/30">
+                <p 
+                  className="text-muted-foreground leading-relaxed"
+                  dangerouslySetInnerHTML={{ 
+                    __html: answer.replace(/\*\*(.*?)\*\*/g, '<strong class="text-primary font-bold">$1</strong>') 
+                  }}
+                />
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

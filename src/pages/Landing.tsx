@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, ArrowRight } from 'lucide-react';
@@ -7,250 +7,140 @@ import PlanToggle from '@/components/landing/PlanToggle';
 import TestimonialCard from '@/components/landing/TestimonialCard';
 import PricingCard from '@/components/landing/PricingCard';
 import FAQItem from '@/components/landing/FAQItem';
-
-const landingContent = {
-  individual: {
-    testimonials: [
-      {
-        quote: "I learned **Python in 3 months** spending just 10 minutes a day. The micro-lessons fit perfectly into my busy schedule.",
-        author: "Marie Laurent",
-        role: "Software Developer"
-      },
-      {
-        quote: "The spaced repetition helped me **retain 90%** of what I learned. I've never felt so confident with new material.",
-        author: "Thomas Kramer",
-        role: "Graduate Student"
-      },
-      {
-        quote: "**Best investment** in my career development. I went from beginner to proficient in data science.",
-        author: "Sophie Renard",
-        role: "Marketing Analyst"
-      }
-    ],
-    pricing: [
-      {
-        name: "Free",
-        price: "€0",
-        description: "Perfect for trying out micro-learning",
-        features: [
-          "**1 course** included",
-          "Basic flashcards",
-          "Progress tracking",
-          "Mobile access"
-        ]
-      },
-      {
-        name: "Pro",
-        price: "€9.99",
-        period: "/month",
-        description: "For dedicated learners who want it all",
-        features: [
-          "**Unlimited courses**",
-          "AI-powered tutor",
-          "**Spaced repetition** engine",
-          "Progress sync across devices",
-          "Offline access"
-        ],
-        highlighted: true
-      },
-      {
-        name: "Lifetime",
-        price: "€99",
-        description: "One payment, forever access",
-        features: [
-          "**Everything in Pro**",
-          "Priority support",
-          "Early access to new features",
-          "**No recurring fees**"
-        ],
-        ctaText: "Get Lifetime Access"
-      }
-    ],
-    faq: [
-      {
-        question: "How long are the lessons?",
-        answer: "Each lesson takes **5-10 minutes** to complete. They're designed to fit into your coffee break, commute, or any spare moment."
-      },
-      {
-        question: "Can I learn offline?",
-        answer: "**Yes, with Pro plan**. Download courses and learn anywhere without an internet connection."
-      },
-      {
-        question: "What subjects are available?",
-        answer: "We offer **50+ topics** from programming and data science to languages, design, and business skills."
-      },
-      {
-        question: "How does spaced repetition work?",
-        answer: "Our AI tracks what you've learned and shows you concepts **right before you'd forget them**. This scientifically-proven method maximizes retention."
-      }
-    ]
-  },
-  company: {
-    testimonials: [
-      {
-        quote: "We **reduced training costs by 60%** with MicroLearn. Our employees actually complete their training now.",
-        author: "Jean-Pierre Dubois",
-        role: "CEO, TechCorp France"
-      },
-      {
-        quote: "Employee engagement **increased by 85%** since adoption. The gamification keeps teams motivated.",
-        author: "Anna Schmidt",
-        role: "HR Director, StartupX"
-      },
-      {
-        quote: "**ROI within 3 months** of implementation. The analytics dashboard helps us identify skill gaps instantly.",
-        author: "Marc Lefebvre",
-        role: "L&D Manager, BigCo"
-      }
-    ],
-    pricing: [
-      {
-        name: "Team",
-        price: "€29",
-        period: "/user/month",
-        description: "For growing teams up to 50 people",
-        features: [
-          "**Up to 50 users**",
-          "Team analytics dashboard",
-          "Custom learning paths",
-          "Email support"
-        ]
-      },
-      {
-        name: "Business",
-        price: "€19",
-        period: "/user/month",
-        description: "Best value for larger organizations",
-        features: [
-          "**Unlimited users**",
-          "**SSO integration**",
-          "Custom course creation",
-          "Advanced analytics",
-          "Priority support"
-        ],
-        highlighted: true
-      },
-      {
-        name: "Enterprise",
-        price: "Custom",
-        description: "Tailored for large enterprises",
-        features: [
-          "**Everything in Business**",
-          "Dedicated account manager",
-          "**API access**",
-          "On-premise option",
-          "Custom integrations"
-        ],
-        ctaText: "Contact Sales"
-      }
-    ],
-    faq: [
-      {
-        question: "Can we create custom courses?",
-        answer: "**Yes, with Business plan**. Our course builder lets you create branded content specific to your organization's needs."
-      },
-      {
-        question: "Is there SSO integration?",
-        answer: "**Yes, SAML and OAuth supported**. Integrate seamlessly with Okta, Azure AD, Google Workspace, and more."
-      },
-      {
-        question: "How do we track employee progress?",
-        answer: "Our **real-time analytics dashboard** shows completion rates, engagement metrics, skill progression, and identifies learning gaps."
-      },
-      {
-        question: "What about data security?",
-        answer: "We're **SOC 2 Type II certified** and GDPR compliant. Your data is encrypted at rest and in transit with enterprise-grade security."
-      }
-    ]
-  }
-};
+import LanguageToggle from '@/components/landing/LanguageToggle';
+import { translations, type Language, type PlanType } from '@/data/landingTranslations';
 
 const Landing = () => {
-  const [planType, setPlanType] = useState<'individual' | 'company'>('individual');
+  const [planType, setPlanType] = useState<PlanType>('individual');
+  const [language, setLanguage] = useState<Language>(() => {
+    const saved = localStorage.getItem('landing-language');
+    return (saved === 'fr' ? 'fr' : 'en') as Language;
+  });
   const navigate = useNavigate();
-  const content = landingContent[planType];
+  
+  const t = translations[language];
+  const content = t.content[planType];
+
+  useEffect(() => {
+    localStorage.setItem('landing-language', language);
+  }, [language]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-hidden">
+      {/* Decorative background elements */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        {/* Animated gradient blobs */}
+        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl animate-blob" />
+        <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-purple-500/5 rounded-full blur-3xl animate-blob animation-delay-2000" />
+        <div className="absolute bottom-1/4 left-1/3 w-[400px] h-[400px] bg-emerald-500/5 rounded-full blur-3xl animate-blob animation-delay-4000" />
+        
+        {/* Subtle grid pattern */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--border)/0.3)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border)/0.3)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,black_70%,transparent_110%)]" />
+      </div>
+
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-background/70 backdrop-blur-xl border-b border-border/50">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+            <div className="w-9 h-9 bg-gradient-to-br from-primary to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
               <Sparkles className="w-5 h-5 text-primary-foreground" />
             </div>
             <span className="text-xl font-bold text-foreground">MicroLearn</span>
           </div>
-          <Button onClick={() => navigate('/dashboard')}>
-            Get Started <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
+          <div className="flex items-center gap-3">
+            <LanguageToggle language={language} onToggle={setLanguage} />
+            <Button onClick={() => navigate('/dashboard')} className="shadow-lg shadow-primary/20">
+              {t.header.cta} <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </div>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6">
-        <div className="max-w-4xl mx-auto text-center">
+      <section className="relative pt-36 pb-24 px-6">
+        <div className="max-w-4xl mx-auto text-center relative z-10">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
+            className="inline-block mb-6"
+          >
+            <span className="px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium border border-primary/20">
+              ✨ AI-Powered Micro-Learning
+            </span>
+          </motion.div>
+          
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-5xl md:text-6xl font-extrabold text-foreground mb-6 leading-tight"
+            transition={{ delay: 0.1 }}
+            className="text-5xl md:text-7xl font-extrabold text-foreground mb-6 leading-[1.1] tracking-tight"
           >
-            Learn smarter,{' '}
-            <span className="text-primary">not harder</span>
+            {t.hero.title}{' '}
+            <span className="bg-gradient-to-r from-primary via-purple-500 to-primary bg-clip-text text-transparent bg-[size:200%] animate-gradient">
+              {t.hero.titleHighlight}
+            </span>
           </motion.h1>
           
           <motion.p 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto"
+            transition={{ delay: 0.2 }}
+            className="text-xl md:text-2xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed"
           >
-            Micro-lessons powered by AI and spaced repetition. 
-            <strong className="text-foreground"> Master any skill in just 10 minutes a day.</strong>
+            {t.hero.subtitle}
+            <strong className="text-foreground block mt-2"> {t.hero.subtitleBold}</strong>
           </motion.p>
           
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="mb-8"
+            transition={{ delay: 0.3 }}
+            className="mb-6"
           >
-            <PlanToggle planType={planType} onToggle={setPlanType} />
+            <PlanToggle 
+              planType={planType} 
+              onToggle={setPlanType} 
+              labels={t.planToggle}
+            />
           </motion.div>
           
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
+            transition={{ delay: 0.4 }}
             className="text-sm text-muted-foreground"
           >
-            {planType === 'individual' 
-              ? "For personal growth and self-directed learning" 
-              : "For teams and organizations that invest in their people"}
+            {planType === 'individual' ? t.hero.individualDesc : t.hero.companyDesc}
           </motion.p>
         </div>
       </section>
 
       {/* Testimonials Section */}
-      <section className="py-20 px-6 bg-muted/30">
-        <div className="max-w-6xl mx-auto">
-          <motion.h2 
-            key={`testimonials-title-${planType}`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-3xl md:text-4xl font-bold text-foreground text-center mb-4"
-          >
-            {planType === 'individual' ? 'Loved by learners' : 'Trusted by companies'}
-          </motion.h2>
-          <p className="text-muted-foreground text-center mb-12 max-w-2xl mx-auto">
-            {planType === 'individual' 
-              ? "Join thousands who've transformed their skills with micro-learning"
-              : "Leading organizations trust us with their learning & development"}
-          </p>
+      <section className="relative py-24 px-6">
+        {/* Section divider wave */}
+        <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-transparent to-muted/30" />
+        
+        <div className="max-w-6xl mx-auto relative z-10">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`testimonials-header-${planType}-${language}`}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+            >
+              <h2 className="text-3xl md:text-5xl font-bold text-foreground text-center mb-4">
+                {planType === 'individual' ? t.testimonials.individualTitle : t.testimonials.companyTitle}
+              </h2>
+              <p className="text-muted-foreground text-center mb-12 max-w-2xl mx-auto text-lg">
+                {planType === 'individual' ? t.testimonials.individualSubtitle : t.testimonials.companySubtitle}
+              </p>
+            </motion.div>
+          </AnimatePresence>
           
           <AnimatePresence mode="wait">
             <motion.div 
-              key={planType}
+              key={`${planType}-${language}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
@@ -258,7 +148,7 @@ const Landing = () => {
               className="grid md:grid-cols-3 gap-6"
             >
               {content.testimonials.map((testimonial, index) => (
-                <TestimonialCard key={index} {...testimonial} />
+                <TestimonialCard key={index} {...testimonial} index={index} />
               ))}
             </motion.div>
           </AnimatePresence>
@@ -266,33 +156,35 @@ const Landing = () => {
       </section>
 
       {/* Pricing Section */}
-      <section className="py-20 px-6">
-        <div className="max-w-5xl mx-auto">
-          <motion.h2 
-            key={`pricing-title-${planType}`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-3xl md:text-4xl font-bold text-foreground text-center mb-4"
-          >
-            {planType === 'individual' ? 'Simple, transparent pricing' : 'Plans that scale with you'}
-          </motion.h2>
-          <p className="text-muted-foreground text-center mb-12 max-w-2xl mx-auto">
-            {planType === 'individual' 
-              ? "Start free, upgrade when you're ready"
-              : "Volume discounts available for larger teams"}
-          </p>
+      <section className="relative py-24 px-6 bg-muted/20">
+        <div className="max-w-5xl mx-auto relative z-10">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`pricing-header-${planType}-${language}`}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+            >
+              <h2 className="text-3xl md:text-5xl font-bold text-foreground text-center mb-4">
+                {planType === 'individual' ? t.pricing.individualTitle : t.pricing.companyTitle}
+              </h2>
+              <p className="text-muted-foreground text-center mb-12 max-w-2xl mx-auto text-lg">
+                {planType === 'individual' ? t.pricing.individualSubtitle : t.pricing.companySubtitle}
+              </p>
+            </motion.div>
+          </AnimatePresence>
           
           <AnimatePresence mode="wait">
             <motion.div 
-              key={planType}
+              key={`${planType}-${language}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.3 }}
-              className="grid md:grid-cols-3 gap-6"
+              className="grid md:grid-cols-3 gap-6 items-start"
             >
               {content.pricing.map((plan, index) => (
-                <PricingCard key={index} {...plan} />
+                <PricingCard key={index} {...plan} index={index} />
               ))}
             </motion.div>
           </AnimatePresence>
@@ -300,32 +192,35 @@ const Landing = () => {
       </section>
 
       {/* FAQ Section */}
-      <section className="py-20 px-6 bg-muted/30">
-        <div className="max-w-3xl mx-auto">
-          <motion.h2 
-            key={`faq-title-${planType}`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-3xl md:text-4xl font-bold text-foreground text-center mb-4"
-          >
-            Frequently asked questions
-          </motion.h2>
-          <p className="text-muted-foreground text-center mb-12">
-            {planType === 'individual' 
-              ? "Everything you need to know about your learning journey"
-              : "Common questions from L&D professionals"}
-          </p>
+      <section className="relative py-24 px-6">
+        <div className="max-w-3xl mx-auto relative z-10">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`faq-header-${planType}-${language}`}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+            >
+              <h2 className="text-3xl md:text-5xl font-bold text-foreground text-center mb-4">
+                {t.faq.title}
+              </h2>
+              <p className="text-muted-foreground text-center mb-12 text-lg">
+                {planType === 'individual' ? t.faq.individualSubtitle : t.faq.companySubtitle}
+              </p>
+            </motion.div>
+          </AnimatePresence>
           
           <AnimatePresence mode="wait">
             <motion.div 
-              key={planType}
+              key={`${planType}-${language}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.3 }}
+              className="bg-card rounded-2xl border border-border p-6 shadow-lg"
             >
               {content.faq.map((item, index) => (
-                <FAQItem key={index} {...item} />
+                <FAQItem key={index} {...item} index={index} />
               ))}
             </motion.div>
           </AnimatePresence>
@@ -333,39 +228,48 @@ const Landing = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-6">
-            Ready to start learning?
-          </h2>
-          <p className="text-xl text-muted-foreground mb-8">
-            {planType === 'individual' 
-              ? "Join over 100,000 learners. Start for free today."
-              : "Book a demo and see how we can transform your L&D."}
-          </p>
-          <Button size="lg" className="text-lg px-8" onClick={() => navigate('/dashboard')}>
-            {planType === 'individual' ? 'Start Learning Free' : 'Book a Demo'}
-            <ArrowRight className="w-5 h-5 ml-2" />
-          </Button>
+      <section className="relative py-24 px-6">
+        <div className="max-w-4xl mx-auto text-center relative z-10">
+          <div className="relative inline-block">
+            {/* Glow effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-purple-500/20 to-primary/20 blur-3xl rounded-full" />
+            
+            <div className="relative bg-card border border-border rounded-3xl p-12 shadow-xl">
+              <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-6">
+                {t.cta.title}
+              </h2>
+              <p className="text-xl text-muted-foreground mb-8">
+                {planType === 'individual' ? t.cta.individualSubtitle : t.cta.companySubtitle}
+              </p>
+              <Button 
+                size="lg" 
+                className="text-lg px-10 py-6 shadow-lg shadow-primary/30 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90" 
+                onClick={() => navigate('/dashboard')}
+              >
+                {planType === 'individual' ? t.cta.individualButton : t.cta.companyButton}
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </Button>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-8 px-6 border-t border-border">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <footer className="relative py-8 px-6 border-t border-border bg-muted/20">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 relative z-10">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-primary rounded-md flex items-center justify-center">
+            <div className="w-7 h-7 bg-gradient-to-br from-primary to-purple-600 rounded-lg flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-primary-foreground" />
             </div>
-            <span className="font-semibold text-foreground">MicroLearn</span>
+            <span className="font-bold text-foreground">MicroLearn</span>
           </div>
           <div className="flex items-center gap-6 text-sm text-muted-foreground">
-            <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
-            <a href="#" className="hover:text-foreground transition-colors">Terms</a>
-            <a href="#" className="hover:text-foreground transition-colors">Contact</a>
+            <a href="#" className="hover:text-primary transition-colors">{t.footer.privacy}</a>
+            <a href="#" className="hover:text-primary transition-colors">{t.footer.terms}</a>
+            <a href="#" className="hover:text-primary transition-colors">{t.footer.contact}</a>
           </div>
           <p className="text-sm text-muted-foreground">
-            © 2024 MicroLearn. All rights reserved.
+            {t.footer.copyright}
           </p>
         </div>
       </footer>
