@@ -4,10 +4,10 @@ export const translations = {
       cta: "Get Started"
     },
     hero: {
-      title: "Learn smarter,",
-      titleHighlight: "not harder",
-      subtitle: "Micro-lessons powered by AI and spaced repetition.",
-      subtitleBold: "Master any skill at your own pace.",
+      title: "Master any skill,",
+      titleHighlight: "your way",
+      subtitle: "AI adapts every course to your unique learning style.",
+      subtitleBold: "Your pace. Your pedagogy. Your success.",
       individualDesc: "For personal growth and self-directed learning",
       companyDesc: "For teams and organizations that invest in their people"
     },
@@ -288,10 +288,10 @@ export const translations = {
       cta: "Commencer"
     },
     hero: {
-      title: "Apprenez mieux,",
-      titleHighlight: "pas plus",
-      subtitle: "Micro-leçons alimentées par l'IA et la répétition espacée.",
-      subtitleBold: "Maîtrisez n'importe quelle compétence à votre rythme.",
+      title: "Maîtrisez tout,",
+      titleHighlight: "à votre façon",
+      subtitle: "L'IA adapte chaque cours à votre style d'apprentissage unique.",
+      subtitleBold: "Votre rythme. Votre pédagogie. Votre réussite.",
       individualDesc: "Pour la croissance personnelle et l'apprentissage autonome",
       companyDesc: "Pour les équipes et organisations qui investissent dans leurs talents"
     },

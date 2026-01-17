@@ -183,17 +183,17 @@ const TestimonialCarousel = ({ testimonials, language, planType }: TestimonialCa
         </button>
       </div>
       
-      {/* Trust badges - Enhanced company logos */}
+      {/* Trust badges - Real company logos */}
       <div className="mt-12 pt-8 border-t border-border/30">
         <p className="text-center text-sm text-muted-foreground mb-6 font-medium">
           {planType === 'company' ? (language === 'en' ? 'Trusted by industry leaders' : 'Approuvé par les leaders du marché') : (language === 'en' ? 'Featured in' : 'Présent dans')}
         </p>
-        <div className="flex items-center justify-center gap-8 md:gap-12 flex-wrap">
+        <div className="flex items-center justify-center gap-10 md:gap-16 flex-wrap">
           {[
-            { letter: 'G', name: 'Google', color: 'from-blue-500 to-green-500' },
-            { letter: 'M', name: 'Microsoft', color: 'from-blue-600 to-cyan-500' },
-            { letter: 'A', name: 'Apple', color: 'from-gray-600 to-gray-400' },
-            { letter: 'S', name: 'Spotify', color: 'from-green-500 to-green-400' },
+            { name: 'Google', logo: 'https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png' },
+            { name: 'Microsoft', logo: 'https://img-prod-cms-rt-microsoft-com.akamaized.net/cms/api/am/imageFileData/RE1Mu3b?ver=5c31' },
+            { name: 'Spotify', logo: 'https://storage.googleapis.com/pr-newsroom-wp/1/2018/11/Spotify_Logo_RGB_Green.png' },
+            { name: 'Slack', logo: 'https://a.slack-edge.com/80588/marketing/img/icons/icon_slack_hash_colored.png' },
           ].map((company, index) => (
             <motion.div
               key={company.name}
@@ -201,14 +201,14 @@ const TestimonialCarousel = ({ testimonials, language, planType }: TestimonialCa
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: index * 0.1 }}
-              className="flex items-center gap-3 group cursor-default"
+              whileHover={{ scale: 1.1 }}
+              className="flex items-center justify-center group cursor-default grayscale hover:grayscale-0 opacity-60 hover:opacity-100 transition-all duration-300"
             >
-              <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${company.color} flex items-center justify-center font-bold text-white text-lg shadow-md group-hover:scale-110 transition-transform duration-200`}>
-                {company.letter}
-              </div>
-              <span className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors duration-200">
-                {company.name}
-              </span>
+              <img 
+                src={company.logo} 
+                alt={company.name}
+                className="h-6 md:h-8 w-auto object-contain"
+              />
             </motion.div>
           ))}
         </div>
