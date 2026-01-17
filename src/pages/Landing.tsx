@@ -1,168 +1,374 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Zap, Flame, BookOpen, Brain, Sparkles } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Sparkles, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import PlanToggle from '@/components/landing/PlanToggle';
+import TestimonialCard from '@/components/landing/TestimonialCard';
+import PricingCard from '@/components/landing/PricingCard';
+import FAQItem from '@/components/landing/FAQItem';
+
+const landingContent = {
+  individual: {
+    testimonials: [
+      {
+        quote: "I learned **Python in 3 months** spending just 10 minutes a day. The micro-lessons fit perfectly into my busy schedule.",
+        author: "Marie Laurent",
+        role: "Software Developer"
+      },
+      {
+        quote: "The spaced repetition helped me **retain 90%** of what I learned. I've never felt so confident with new material.",
+        author: "Thomas Kramer",
+        role: "Graduate Student"
+      },
+      {
+        quote: "**Best investment** in my career development. I went from beginner to proficient in data science.",
+        author: "Sophie Renard",
+        role: "Marketing Analyst"
+      }
+    ],
+    pricing: [
+      {
+        name: "Free",
+        price: "€0",
+        description: "Perfect for trying out micro-learning",
+        features: [
+          "**1 course** included",
+          "Basic flashcards",
+          "Progress tracking",
+          "Mobile access"
+        ]
+      },
+      {
+        name: "Pro",
+        price: "€9.99",
+        period: "/month",
+        description: "For dedicated learners who want it all",
+        features: [
+          "**Unlimited courses**",
+          "AI-powered tutor",
+          "**Spaced repetition** engine",
+          "Progress sync across devices",
+          "Offline access"
+        ],
+        highlighted: true
+      },
+      {
+        name: "Lifetime",
+        price: "€99",
+        description: "One payment, forever access",
+        features: [
+          "**Everything in Pro**",
+          "Priority support",
+          "Early access to new features",
+          "**No recurring fees**"
+        ],
+        ctaText: "Get Lifetime Access"
+      }
+    ],
+    faq: [
+      {
+        question: "How long are the lessons?",
+        answer: "Each lesson takes **5-10 minutes** to complete. They're designed to fit into your coffee break, commute, or any spare moment."
+      },
+      {
+        question: "Can I learn offline?",
+        answer: "**Yes, with Pro plan**. Download courses and learn anywhere without an internet connection."
+      },
+      {
+        question: "What subjects are available?",
+        answer: "We offer **50+ topics** from programming and data science to languages, design, and business skills."
+      },
+      {
+        question: "How does spaced repetition work?",
+        answer: "Our AI tracks what you've learned and shows you concepts **right before you'd forget them**. This scientifically-proven method maximizes retention."
+      }
+    ]
+  },
+  company: {
+    testimonials: [
+      {
+        quote: "We **reduced training costs by 60%** with MicroLearn. Our employees actually complete their training now.",
+        author: "Jean-Pierre Dubois",
+        role: "CEO, TechCorp France"
+      },
+      {
+        quote: "Employee engagement **increased by 85%** since adoption. The gamification keeps teams motivated.",
+        author: "Anna Schmidt",
+        role: "HR Director, StartupX"
+      },
+      {
+        quote: "**ROI within 3 months** of implementation. The analytics dashboard helps us identify skill gaps instantly.",
+        author: "Marc Lefebvre",
+        role: "L&D Manager, BigCo"
+      }
+    ],
+    pricing: [
+      {
+        name: "Team",
+        price: "€29",
+        period: "/user/month",
+        description: "For growing teams up to 50 people",
+        features: [
+          "**Up to 50 users**",
+          "Team analytics dashboard",
+          "Custom learning paths",
+          "Email support"
+        ]
+      },
+      {
+        name: "Business",
+        price: "€19",
+        period: "/user/month",
+        description: "Best value for larger organizations",
+        features: [
+          "**Unlimited users**",
+          "**SSO integration**",
+          "Custom course creation",
+          "Advanced analytics",
+          "Priority support"
+        ],
+        highlighted: true
+      },
+      {
+        name: "Enterprise",
+        price: "Custom",
+        description: "Tailored for large enterprises",
+        features: [
+          "**Everything in Business**",
+          "Dedicated account manager",
+          "**API access**",
+          "On-premise option",
+          "Custom integrations"
+        ],
+        ctaText: "Contact Sales"
+      }
+    ],
+    faq: [
+      {
+        question: "Can we create custom courses?",
+        answer: "**Yes, with Business plan**. Our course builder lets you create branded content specific to your organization's needs."
+      },
+      {
+        question: "Is there SSO integration?",
+        answer: "**Yes, SAML and OAuth supported**. Integrate seamlessly with Okta, Azure AD, Google Workspace, and more."
+      },
+      {
+        question: "How do we track employee progress?",
+        answer: "Our **real-time analytics dashboard** shows completion rates, engagement metrics, skill progression, and identifies learning gaps."
+      },
+      {
+        question: "What about data security?",
+        answer: "We're **SOC 2 Type II certified** and GDPR compliant. Your data is encrypted at rest and in transit with enterprise-grade security."
+      }
+    ]
+  }
+};
 
 const Landing = () => {
+  const [planType, setPlanType] = useState<'individual' | 'company'>('individual');
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    navigate('/dashboard');
-  };
+  const content = landingContent[planType];
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Hero gradient */}
-      <div className="absolute inset-0 gradient-hero pointer-events-none" />
-      
-      {/* Floating decorations */}
-      <motion.div
-        className="absolute top-20 left-10 w-20 h-20 rounded-full gradient-primary opacity-20 blur-xl"
-        animate={{ y: [0, -20, 0], scale: [1, 1.1, 1] }}
-        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <motion.div
-        className="absolute top-40 right-10 w-32 h-32 rounded-full gradient-xp opacity-20 blur-xl"
-        animate={{ y: [0, 20, 0], scale: [1, 1.2, 1] }}
-        transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-      />
-
-      <main className="flex-1 flex flex-col items-center justify-center px-6 py-12 relative z-10">
-        {/* Logo & Brand */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-8"
-        >
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl gradient-primary shadow-glow mb-6">
-            <Brain className="w-10 h-10 text-primary-foreground" />
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-primary-foreground" />
+            </div>
+            <span className="text-xl font-bold text-foreground">MicroLearn</span>
           </div>
-          <h1 className="text-4xl font-extrabold text-foreground mb-2">
-            MicroLearn
-          </h1>
-          <p className="text-muted-foreground text-lg">
-            Apprenez 5 minutes par jour
+          <Button onClick={() => navigate('/dashboard')}>
+            Get Started <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      <section className="pt-32 pb-20 px-6">
+        <div className="max-w-4xl mx-auto text-center">
+          <motion.h1 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-5xl md:text-6xl font-extrabold text-foreground mb-6 leading-tight"
+          >
+            Learn smarter,{' '}
+            <span className="text-primary">not harder</span>
+          </motion.h1>
+          
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto"
+          >
+            Micro-lessons powered by AI and spaced repetition. 
+            <strong className="text-foreground"> Master any skill in just 10 minutes a day.</strong>
+          </motion.p>
+          
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="mb-8"
+          >
+            <PlanToggle planType={planType} onToggle={setPlanType} />
+          </motion.div>
+          
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="text-sm text-muted-foreground"
+          >
+            {planType === 'individual' 
+              ? "For personal growth and self-directed learning" 
+              : "For teams and organizations that invest in their people"}
+          </motion.p>
+        </div>
+      </section>
+
+      {/* Testimonials Section */}
+      <section className="py-20 px-6 bg-muted/30">
+        <div className="max-w-6xl mx-auto">
+          <motion.h2 
+            key={`testimonials-title-${planType}`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-3xl md:text-4xl font-bold text-foreground text-center mb-4"
+          >
+            {planType === 'individual' ? 'Loved by learners' : 'Trusted by companies'}
+          </motion.h2>
+          <p className="text-muted-foreground text-center mb-12 max-w-2xl mx-auto">
+            {planType === 'individual' 
+              ? "Join thousands who've transformed their skills with micro-learning"
+              : "Leading organizations trust us with their learning & development"}
           </p>
-        </motion.div>
-
-        {/* Features pills */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="flex flex-wrap gap-3 justify-center mb-10"
-        >
-          {[
-            { icon: Zap, label: 'Gamifié', color: 'text-xp' },
-            { icon: Flame, label: 'Streaks', color: 'text-streak' },
-            { icon: BookOpen, label: 'Cartes', color: 'text-primary' },
-            { icon: Sparkles, label: 'IA', color: 'text-level-intermediate' },
-          ].map((feature, i) => (
-            <motion.div
-              key={feature.label}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.3 + i * 0.1 }}
-              className="flex items-center gap-2 px-4 py-2 bg-card rounded-full shadow-card border border-border"
+          
+          <AnimatePresence mode="wait">
+            <motion.div 
+              key={planType}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+              className="grid md:grid-cols-3 gap-6"
             >
-              <feature.icon className={`w-4 h-4 ${feature.color}`} />
-              <span className="text-sm font-medium text-foreground">{feature.label}</span>
+              {content.testimonials.map((testimonial, index) => (
+                <TestimonialCard key={index} {...testimonial} />
+              ))}
             </motion.div>
-          ))}
-        </motion.div>
+          </AnimatePresence>
+        </div>
+      </section>
 
-        {/* Login Form */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="w-full max-w-sm"
-        >
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Input
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="h-14 text-base rounded-2xl bg-card border-border focus:border-primary focus:ring-primary"
-              />
-            </div>
-            <div className="space-y-2">
-              <Input
-                type="password"
-                placeholder="Mot de passe"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="h-14 text-base rounded-2xl bg-card border-border focus:border-primary focus:ring-primary"
-              />
-            </div>
-            
-            <Button
-              type="submit"
-              className="w-full h-14 text-lg font-semibold rounded-2xl gradient-primary hover:opacity-90 transition-opacity shadow-glow"
+      {/* Pricing Section */}
+      <section className="py-20 px-6">
+        <div className="max-w-5xl mx-auto">
+          <motion.h2 
+            key={`pricing-title-${planType}`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-3xl md:text-4xl font-bold text-foreground text-center mb-4"
+          >
+            {planType === 'individual' ? 'Simple, transparent pricing' : 'Plans that scale with you'}
+          </motion.h2>
+          <p className="text-muted-foreground text-center mb-12 max-w-2xl mx-auto">
+            {planType === 'individual' 
+              ? "Start free, upgrade when you're ready"
+              : "Volume discounts available for larger teams"}
+          </p>
+          
+          <AnimatePresence mode="wait">
+            <motion.div 
+              key={planType}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+              className="grid md:grid-cols-3 gap-6"
             >
-              Continuer
-            </Button>
-          </form>
+              {content.pricing.map((plan, index) => (
+                <PricingCard key={index} {...plan} />
+              ))}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </section>
 
-          <div className="mt-6 text-center">
-            <p className="text-muted-foreground text-sm">
-              Pas encore de compte ?{' '}
-              <button className="text-primary font-semibold hover:underline">
-                S'inscrire
-              </button>
-            </p>
-          </div>
+      {/* FAQ Section */}
+      <section className="py-20 px-6 bg-muted/30">
+        <div className="max-w-3xl mx-auto">
+          <motion.h2 
+            key={`faq-title-${planType}`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-3xl md:text-4xl font-bold text-foreground text-center mb-4"
+          >
+            Frequently asked questions
+          </motion.h2>
+          <p className="text-muted-foreground text-center mb-12">
+            {planType === 'individual' 
+              ? "Everything you need to know about your learning journey"
+              : "Common questions from L&D professionals"}
+          </p>
+          
+          <AnimatePresence mode="wait">
+            <motion.div 
+              key={planType}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              {content.faq.map((item, index) => (
+                <FAQItem key={index} {...item} />
+              ))}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </section>
 
-          {/* Social login */}
-          <div className="mt-8">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-border" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-background text-muted-foreground">ou</span>
-              </div>
+      {/* CTA Section */}
+      <section className="py-20 px-6">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-6">
+            Ready to start learning?
+          </h2>
+          <p className="text-xl text-muted-foreground mb-8">
+            {planType === 'individual' 
+              ? "Join over 100,000 learners. Start for free today."
+              : "Book a demo and see how we can transform your L&D."}
+          </p>
+          <Button size="lg" className="text-lg px-8" onClick={() => navigate('/dashboard')}>
+            {planType === 'individual' ? 'Start Learning Free' : 'Book a Demo'}
+            <ArrowRight className="w-5 h-5 ml-2" />
+          </Button>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="py-8 px-6 border-t border-border">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 bg-primary rounded-md flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-primary-foreground" />
             </div>
-
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <Button
-                variant="outline"
-                className="h-12 rounded-xl border-border hover:bg-secondary"
-                onClick={() => navigate('/dashboard')}
-              >
-                <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
-                  <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                  <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                </svg>
-                Google
-              </Button>
-              <Button
-                variant="outline"
-                className="h-12 rounded-xl border-border hover:bg-secondary"
-                onClick={() => navigate('/dashboard')}
-              >
-                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                </svg>
-                X
-              </Button>
-            </div>
+            <span className="font-semibold text-foreground">MicroLearn</span>
           </div>
-        </motion.div>
-      </main>
-
-      {/* Bottom decoration */}
-      <div className="h-24 bg-gradient-to-t from-primary/5 to-transparent" />
+          <div className="flex items-center gap-6 text-sm text-muted-foreground">
+            <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
+            <a href="#" className="hover:text-foreground transition-colors">Terms</a>
+            <a href="#" className="hover:text-foreground transition-colors">Contact</a>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            © 2024 MicroLearn. All rights reserved.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 };
