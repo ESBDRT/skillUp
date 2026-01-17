@@ -134,7 +134,10 @@ const Dashboard = () => {
             </div>
             <span className="font-medium text-foreground">Créer un cours</span>
           </button>
-          <button className="flex items-center gap-3 p-4 bg-card rounded-2xl shadow-card border border-border hover:border-primary transition-colors">
+          <button 
+            onClick={() => navigate('/brain')}
+            className="flex items-center gap-3 p-4 bg-card rounded-2xl shadow-card border border-border hover:border-primary transition-colors"
+          >
             <div className="p-2 bg-primary/10 rounded-xl">
               <Brain className="w-5 h-5 text-primary" />
             </div>

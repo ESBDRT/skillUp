@@ -208,7 +208,7 @@ export default function CreatorStudio() {
     setCards(newCards);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!courseTitle.trim()) {
       toast.error("Veuillez entrer un titre pour le cours");
       return;
@@ -218,8 +218,52 @@ export default function CreatorStudio() {
       return;
     }
     
-    // TODO: Save to database when auth is implemented
-    toast.success("Cours sauvegardé ! (Mode démo - pas de base de données connectée)");
+    try {
+      toast.info('Sauvegarde du cours...');
+      
+      // Format cards for saving
+      const formattedCards = cards.map((card, index) => ({
+        id: card.id,
+        type: card.type,
+        title: card.title,
+        content: card.content,
+        options: card.options?.map((opt, i) => ({
+          id: `opt-${i}`,
+          text: opt,
+          isCorrect: i === card.correctIndex
+        })),
+        flashcardBack: card.flashcardBack,
+        sliderConfig: card.sliderConfig,
+        xpReward: card.xpReward || 10,
+      }));
+
+      const courseToSave = {
+        title: courseTitle,
+        description: courseDescription,
+        category: courseCategory || 'Général',
+        icon: courseIcon,
+        level: courseLevel,
+        estimatedMinutes: estimatedMinutes,
+        totalXP: totalXP,
+        durationDays: 1,
+        dailyCardsCount: cards.length,
+        cards: formattedCards,
+      };
+
+      const saveResponse = await supabase.functions.invoke('save-generated-course', {
+        body: { course: courseToSave }
+      });
+
+      if (saveResponse.error) {
+        throw new Error(saveResponse.error.message);
+      }
+
+      toast.success('Cours publié avec succès !');
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Error saving course:', error);
+      toast.error('Erreur lors de la sauvegarde du cours');
+    }
   };
 
   const handlePreview = () => {
