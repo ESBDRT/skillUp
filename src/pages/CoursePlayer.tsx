@@ -400,9 +400,13 @@ const CoursePlayer = () => {
   const renderCard = () => {
     if (!currentCard) return null;
     
+    // Calculate slide number for info cards
+    const infoCardsUpToNow = cardsToPlay.slice(0, currentCardIndex + 1).filter(c => c.type === 'info').length;
+    const totalInfoCards = cardsToPlay.filter(c => c.type === 'info').length;
+    
     switch (currentCard.type) {
       case 'info':
-        return <InfoCard card={currentCard} />;
+        return <InfoCard card={currentCard} slideNumber={infoCardsUpToNow} totalSlides={totalInfoCards} />;
       case 'quiz':
         return <QuizCard card={currentCard} onComplete={handleCardComplete} />;
       case 'flashcard':
@@ -454,7 +458,7 @@ const CoursePlayer = () => {
 
       {/* Card Area */}
       <main 
-        className="flex-1 flex flex-col px-4 py-6 relative no-tap-highlight"
+        className="flex-1 flex flex-col px-4 py-4 relative no-tap-highlight overflow-hidden"
         onClick={handleTap}
       >
         <AnimatePresence mode="wait">
@@ -464,7 +468,7 @@ const CoursePlayer = () => {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -50 }}
             transition={{ duration: 0.3, ease: 'easeOut' }}
-            className="flex-1 flex flex-col"
+            className="flex-1 flex flex-col min-h-0"
           >
             {renderCard()}
           </motion.div>

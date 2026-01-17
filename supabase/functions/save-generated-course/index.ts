@@ -63,11 +63,12 @@ serve(async (req) => {
     const totalCards = course.cards.length;
     const estimatedMinutes = course.estimated_minutes || 10;
     
-    // ~2-3 minutes per card, calculate how many cards fit in daily time
-    const cardsPerDay = course.daily_cards_count || Math.max(2, Math.ceil(estimatedMinutes / 3));
+    // Minimum 4 cards per session for good engagement
+    // Use provided values or calculate sensible defaults
+    const cardsPerDay = course.daily_cards_count || Math.max(4, Math.ceil(estimatedMinutes / 2));
     const durationDays = course.duration_days || Math.max(1, Math.ceil(totalCards / cardsPerDay));
     
-    console.log(`Calculated: ${cardsPerDay} cards/day, ${durationDays} days total`);
+    console.log(`Total cards: ${totalCards}, cards/day: ${cardsPerDay}, days: ${durationDays}`);
 
     // 1. Insert the course
     const { data: courseData, error: courseError } = await supabase
