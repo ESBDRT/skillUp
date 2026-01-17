@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { BookOpen, CheckCircle2, ArrowRight, Youtube, Github, ExternalLink, FileText } from 'lucide-react';
 import { Card, LessonSection, Resources } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
+import AudioPlayer from '@/components/AudioPlayer';
 
 interface LessonCardProps {
   card: Card;
@@ -28,6 +29,13 @@ const LessonCard = ({ card, onComplete }: LessonCardProps) => {
   
   const sections = card.sections || [];
   const resources = card.resources;
+
+  // Extract full text from all sections for audio player
+  const fullText = useMemo(() => {
+    return sections
+      .map(section => `${section.title}. ${section.content}`)
+      .join(' ');
+  }, [sections]);
 
   // Track which sections have been scrolled into view
   useEffect(() => {
@@ -414,6 +422,9 @@ const LessonCard = ({ card, onComplete }: LessonCardProps) => {
           </motion.div>
         )}
       </div>
+
+      {/* Audio Player - floating button */}
+      <AudioPlayer text={fullText} />
     </div>
   );
 };
