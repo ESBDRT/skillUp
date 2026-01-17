@@ -40,10 +40,11 @@ const PricingCard = ({
       transition={{ delay: index * 0.1 }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`relative rounded-2xl p-6 overflow-hidden group transition-all duration-300 h-full flex flex-col ${
+      whileHover={{ scale: 1.02 }}
+      className={`relative rounded-2xl p-6 overflow-hidden group transition-all duration-500 ease-out h-full flex flex-col ${
         isActive 
-          ? 'bg-gradient-to-br from-primary via-primary to-purple-600 text-primary-foreground shadow-glow scale-[1.02] z-10' 
-          : 'bg-card border border-border hover:border-primary/30 hover:shadow-lg'
+          ? 'bg-gradient-to-br from-primary via-primary to-purple-600 text-primary-foreground shadow-2xl shadow-primary/30 z-10' 
+          : 'bg-card border border-border hover:border-primary/30 hover:shadow-xl'
       }`}
     >
       {/* Shine effect for active card */}
