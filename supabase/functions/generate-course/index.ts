@@ -102,17 +102,18 @@ serve(async (req) => {
         messages: [
           {
             role: 'user',
-            content: `Crée un cours éducatif COMPLET sur "${theme}" avec ${maxSlides} slides et ${quizCount} QCM.
+            content: `Crée un cours éducatif sur "${theme}" avec ${maxSlides} slides et ${quizCount} QCM (questions à choix multiples).
 Niveau: ${levelNames[level]}
 
-RÈGLES IMPORTANTES :
-1. Chaque slide DOIT avoir un TITRE DESCRIPTIF en rapport avec le contenu (PAS "Slide 1", "Slide 2", etc.)
-2. Chaque slide DOIT contenir au moins 150-200 mots de contenu riche avec des **mots en gras**
-3. Les quiz sont UNIQUEMENT des QCM (type: "quiz") avec 4 options et correctIndex
-4. PAS de flashcard, SEULEMENT des QCM
+RÈGLES STRICTES :
+1. Chaque slide a un TITRE DESCRIPTIF (jamais "Slide 1")
+2. Chaque slide contient 150-200 mots avec des **mots en gras**
+3. UNIQUEMENT des QCM avec EXACTEMENT 4 propositions de réponses
+4. INTERDIT : questions ouvertes, flashcards, vrai/faux simple
+5. Chaque QCM a "options" (tableau de 4 strings) et "correctIndex" (0-3)
 
-Tu DOIS répondre UNIQUEMENT avec ce JSON, sans texte avant ou après :
-{"title":"Titre du cours","description":"Description courte","category":"Science","icon":"🔬","lessonSections":[{"title":"Titre descriptif de la section","content":"Contenu RICHE de 150-200 mots minimum. Explique le concept en détail avec des **mots importants en gras**. Donne des exemples concrets et des applications pratiques. Utilise des analogies pour rendre le sujet accessible.","imageKeyword":"keyword english"}],"quizQuestions":[{"type":"quiz","question":"Question claire et précise ?","options":["Bonne réponse détaillée","Mauvaise réponse plausible 1","Mauvaise réponse plausible 2","Mauvaise réponse plausible 3"],"correctIndex":0}]}`
+Réponds UNIQUEMENT avec ce JSON :
+{"title":"Titre","description":"Description","category":"Catégorie","icon":"emoji","lessonSections":[{"title":"Titre descriptif","content":"Contenu riche 150-200 mots avec **mots en gras**","imageKeyword":"mot-clé anglais"}],"quizQuestions":[{"question":"Question ?","options":["Réponse A","Réponse B","Réponse C","Réponse D"],"correctIndex":0}]}`
           }
         ],
         max_tokens: 4096,
