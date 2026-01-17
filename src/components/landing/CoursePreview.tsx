@@ -16,9 +16,9 @@ const courseContent = {
       {
         type: 'lesson',
         title: 'What is Machine Learning?',
-        content: 'Machine Learning is a subset of AI that enables computers to learn from data without being explicitly programmed. Instead of following rigid rules, ML algorithms find patterns in data.',
+        content: 'Machine Learning is a revolutionary subset of artificial intelligence that enables computers to learn and improve from experience without being explicitly programmed. Unlike traditional programming where developers write specific rules, ML algorithms analyze vast amounts of data to identify patterns and make intelligent decisions. This paradigm shift has transformed industries from healthcare diagnostics to autonomous vehicles, enabling systems that continuously evolve and adapt to new information.',
         imageAlt: 'Neural network visualization',
-        keyInsight: 'ML learns from patterns in data'
+        keyInsight: 'ML learns from patterns in data, not explicit rules'
       },
       {
         type: 'quiz',
@@ -55,9 +55,9 @@ const courseContent = {
       {
         type: 'lesson',
         title: "Qu'est-ce que le Machine Learning ?",
-        content: "Le Machine Learning est une branche de l'IA qui permet aux ordinateurs d'apprendre à partir de données. Au lieu de suivre des règles rigides, les algorithmes ML trouvent des patterns dans les données.",
+        content: "Le Machine Learning représente une révolution dans l'intelligence artificielle, permettant aux ordinateurs d'apprendre et de s'améliorer à partir de l'expérience sans programmation explicite. Contrairement à la programmation traditionnelle où les développeurs écrivent des règles spécifiques, les algorithmes ML analysent d'immenses quantités de données pour identifier des patterns et prendre des décisions intelligentes. Ce changement de paradigme a transformé des industries entières, du diagnostic médical aux véhicules autonomes.",
         imageAlt: 'Visualisation réseau neuronal',
-        keyInsight: 'Le ML apprend des patterns dans les données'
+        keyInsight: 'Le ML apprend des patterns, pas de règles explicites'
       },
       {
         type: 'quiz',
