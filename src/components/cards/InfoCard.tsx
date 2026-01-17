@@ -109,21 +109,53 @@ const InfoCard = ({ card, slideNumber, totalSlides }: InfoCardProps) => {
         transition={{ delay: 0.1 }}
         className="flex-1 flex flex-col overflow-y-auto"
       >
-        <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-3 leading-tight">{card.title}</h2>
-        <div className="text-base sm:text-lg text-muted-foreground leading-relaxed flex-1 prose prose-sm dark:prose-invert max-w-none">
+        <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground mb-3 leading-tight break-words hyphens-auto line-clamp-2">
+          {card.title}
+        </h2>
+        <div className="text-sm sm:text-base text-muted-foreground leading-relaxed flex-1 prose prose-sm dark:prose-invert max-w-none">
           <ReactMarkdown
             components={{
-              p: ({ children }) => <p className="mb-3 text-muted-foreground">{children}</p>,
-              strong: ({ children }) => <strong className="text-foreground font-semibold">{children}</strong>,
-              em: ({ children }) => <em className="text-primary">{children}</em>,
-              ul: ({ children }) => <ul className="list-disc list-inside space-y-1 mb-3">{children}</ul>,
-              ol: ({ children }) => <ol className="list-decimal list-inside space-y-1 mb-3">{children}</ol>,
-              li: ({ children }) => <li className="text-muted-foreground">{children}</li>,
-              h3: ({ children }) => <h3 className="text-lg font-semibold text-foreground mt-4 mb-2">{children}</h3>,
-              blockquote: ({ children }) => (
-                <blockquote className="border-l-4 border-primary pl-4 italic text-muted-foreground my-3">
+              p: ({ children }) => (
+                <p className="mb-4 text-sm sm:text-base text-muted-foreground leading-relaxed">
                   {children}
-                </blockquote>
+                </p>
+              ),
+              strong: ({ children }) => (
+                <strong className="text-foreground font-bold bg-primary/10 px-1 rounded">
+                  {children}
+                </strong>
+              ),
+              em: ({ children }) => (
+                <em className="text-primary font-medium not-italic">{children}</em>
+              ),
+              ul: ({ children }) => (
+                <ul className="list-disc list-outside ml-4 space-y-2 mb-4 text-sm sm:text-base">
+                  {children}
+                </ul>
+              ),
+              ol: ({ children }) => (
+                <ol className="list-decimal list-outside ml-4 space-y-2 mb-4 text-sm sm:text-base">
+                  {children}
+                </ol>
+              ),
+              li: ({ children }) => (
+                <li className="text-muted-foreground leading-relaxed">{children}</li>
+              ),
+              h3: ({ children }) => (
+                <h3 className="text-base sm:text-lg font-semibold text-foreground mt-4 mb-2 flex items-center gap-2">
+                  <span className="w-1 h-4 bg-primary rounded-full"></span>
+                  {children}
+                </h3>
+              ),
+              blockquote: ({ children }) => (
+                <div className="bg-gradient-to-r from-primary/15 to-primary/5 border-l-4 border-primary rounded-r-xl p-4 my-4 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <span className="text-xl flex-shrink-0">💡</span>
+                    <div className="flex-1 text-sm sm:text-base text-foreground font-medium">
+                      {children}
+                    </div>
+                  </div>
+                </div>
               ),
             }}
           >

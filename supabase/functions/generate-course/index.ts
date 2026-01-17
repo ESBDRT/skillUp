@@ -166,18 +166,18 @@ STRUCTURE OBLIGATOIRE :
 
 1. SLIDES DE CONTENU (${totalConcepts} slides) :
    Chaque slide DOIT contenir :
-   - title: Titre court (max 50 caractères)
+   - title: Titre court (max 40 caractères pour mobile)
    - content: Texte RICHE de 150-200 mots FORMATÉ EN MARKDOWN avec :
-     * Des **mots en gras** pour les concepts clés
+     * Des **mots clés en gras** pour les concepts importants (utilise beaucoup le gras)
      * Des sauts de ligne (\\n\\n) entre les paragraphes
      * Une explication claire du concept
-     * AU MOINS 2 exemples concrets
+     * Des exemples dans des CALLOUTS avec > (blockquote markdown)
      * Une analogie pour simplifier
      * Une application pratique
    - imageKeyword: 2-3 mots anglais pour l'image générée par IA
 
    EXEMPLE de contenu attendu (format Markdown) :
-   "**La photosynthèse** est le processus par lequel les plantes convertissent la lumière du soleil en énergie.\\n\\n**Imaginez une usine verte** : les feuilles sont les panneaux solaires, l'eau et le CO2 sont les matières premières, et le glucose produit est le carburant.\\n\\n*Exemples concrets :*\\n- Un grand chêne peut produire assez d'oxygène pour 4 personnes par jour\\n- Les algues marines produisent 50% de l'oxygène terrestre\\n\\nEn pratique, c'est pourquoi les plantes d'intérieur améliorent la qualité de l'air chez vous."
+   "**La photosynthèse** est le processus fondamental par lequel les **plantes** transforment la **lumière** en énergie.\\n\\n**Comment ça marche ?** Les feuilles captent la lumière du soleil, absorbent le **CO2** et l'eau pour produire du **glucose**.\\n\\n> 💡 **Exemple concret :** Un grand chêne produit assez d'oxygène pour 4 personnes par jour. Les algues marines génèrent 50% de l'oxygène terrestre !\\n\\n**Application pratique :** C'est pourquoi avoir des **plantes d'intérieur** améliore la qualité de l'air chez vous."
 
 2. TESTS (EXACTEMENT ${quizCount} questions) :
    SEULEMENT 2 TYPES AUTORISÉS :
@@ -188,7 +188,9 @@ STRUCTURE OBLIGATOIRE :
 
 IMPORTANT :
 - EXACTEMENT ${totalConcepts} slides, pas plus, pas moins
+- Titres COURTS (max 40 caractères) pour affichage mobile
 - Contenu LONG et RICHE (150-200 mots par slide) avec formatage MARKDOWN
+- Utilise > pour les exemples (sera affiché en callout avec 💡)
 - SEULEMENT ${quizCount} tests
 - Options de QCM = phrases complètes, pas de lettres
 - PAS de type "open-question" ou "slider"`;
