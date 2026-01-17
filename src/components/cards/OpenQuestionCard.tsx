@@ -90,13 +90,13 @@ const OpenQuestionCard = ({ card, onComplete, onNext }: OpenQuestionCardProps) =
       <motion.div
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="mb-6"
+        className="mb-4 sm:mb-6"
       >
-        <div className="inline-block px-3 py-1 bg-primary/10 rounded-full mb-4">
-          <span className="text-sm font-medium text-primary">Question ouverte</span>
+        <div className="inline-block px-2.5 sm:px-3 py-1 bg-primary/10 rounded-full mb-3 sm:mb-4">
+          <span className="text-xs sm:text-sm font-medium text-primary">Question ouverte</span>
         </div>
-        <h2 className="text-2xl font-bold text-foreground mb-2">{card.title}</h2>
-        <p className="text-lg text-muted-foreground">{card.content}</p>
+        <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-1.5 sm:mb-2 leading-tight">{card.title}</h2>
+        <p className="text-base sm:text-lg text-muted-foreground">{card.content}</p>
       </motion.div>
 
       <motion.div
@@ -112,24 +112,24 @@ const OpenQuestionCard = ({ card, onComplete, onNext }: OpenQuestionCardProps) =
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
               placeholder="Écrivez votre réponse ici..."
-              className="flex-1 min-h-[150px] rounded-2xl resize-none text-base"
+              className="flex-1 min-h-[120px] sm:min-h-[150px] rounded-xl sm:rounded-2xl resize-none text-sm sm:text-base"
               autoFocus
             />
-            <div className="flex items-center justify-between mt-4">
-              <span className="text-sm text-muted-foreground">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 mt-3 sm:mt-4">
+              <span className="text-xs sm:text-sm text-muted-foreground order-2 sm:order-1">
                 {answer.length > 0 && `${answer.length} caractères`}
               </span>
               <Button
                 onClick={handleSubmit}
                 disabled={answer.trim().length === 0 || isSubmitting}
-                className="gradient-primary rounded-xl px-6"
+                className="gradient-primary rounded-xl px-4 sm:px-6 py-3 sm:py-2 text-sm sm:text-base order-1 sm:order-2 touch-target"
               >
                 {isSubmitting ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <>
                     <Send className="w-4 h-4 mr-2" />
-                    Valider ma réponse
+                    Valider
                   </>
                 )}
               </Button>
@@ -140,35 +140,35 @@ const OpenQuestionCard = ({ card, onComplete, onNext }: OpenQuestionCardProps) =
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className={`rounded-2xl p-6 border ${
+              className={`rounded-xl sm:rounded-2xl p-4 sm:p-6 border ${
                 feedback.isValid 
                   ? 'bg-success/10 border-success/20' 
                   : 'bg-warning/10 border-warning/20'
               }`}
             >
-              <div className="flex items-start gap-3 mb-3">
+              <div className="flex items-start gap-2 sm:gap-3 mb-2 sm:mb-3">
                 {feedback.isValid ? (
-                  <CheckCircle2 className="w-6 h-6 text-success flex-shrink-0 mt-0.5" />
+                  <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-success flex-shrink-0 mt-0.5" />
                 ) : (
-                  <XCircle className="w-6 h-6 text-warning flex-shrink-0 mt-0.5" />
+                  <XCircle className="w-5 h-5 sm:w-6 sm:h-6 text-warning flex-shrink-0 mt-0.5" />
                 )}
                 <div>
-                  <h3 className={`font-semibold mb-1 ${feedback.isValid ? 'text-success' : 'text-warning'}`}>
+                  <h3 className={`font-semibold mb-1 text-sm sm:text-base ${feedback.isValid ? 'text-success' : 'text-warning'}`}>
                     {feedback.isValid ? 'Bonne réponse !' : 'À améliorer'}
                   </h3>
-                  <p className="text-foreground">{feedback.message}</p>
+                  <p className="text-sm sm:text-base text-foreground">{feedback.message}</p>
                 </div>
               </div>
               
               {feedback.additions && feedback.additions.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-border/50">
+                <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-border/50">
                   <div className="flex items-center gap-2 mb-2">
-                    <Lightbulb className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-medium text-primary">Pour aller plus loin</span>
+                    <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
+                    <span className="text-xs sm:text-sm font-medium text-primary">Pour aller plus loin</span>
                   </div>
                   <ul className="space-y-1">
                     {feedback.additions.map((addition, idx) => (
-                      <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
+                      <li key={idx} className="text-xs sm:text-sm text-muted-foreground flex items-start gap-2">
                         <span className="text-primary">•</span>
                         {addition}
                       </li>
@@ -183,11 +183,11 @@ const OpenQuestionCard = ({ card, onComplete, onNext }: OpenQuestionCardProps) =
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="mt-6 flex justify-center"
+              className="mt-4 sm:mt-6 flex justify-center"
             >
               <Button
                 onClick={handleContinue}
-                className="px-8 py-3 bg-primary text-primary-foreground rounded-full font-medium hover:bg-primary/90 transition-colors"
+                className="w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-3 bg-primary text-primary-foreground rounded-xl sm:rounded-full font-medium hover:bg-primary/90 transition-colors touch-target"
               >
                 Continuer
                 <ArrowRight className="w-4 h-4 ml-2" />
