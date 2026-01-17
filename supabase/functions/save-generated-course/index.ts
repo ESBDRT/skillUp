@@ -70,7 +70,7 @@ serve(async (req) => {
         description: course.description || '',
         category: course.category || 'Général',
         icon: course.icon || '📚',
-        level: course.level || 'beginner',
+        level: ['beginner', 'intermediate', 'expert'].includes(course.level) ? course.level : 'beginner',
         estimated_minutes: course.estimatedMinutes || 10,
         total_xp: course.totalXP || 0,
         is_published: false,
