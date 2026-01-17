@@ -1,8 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card } from '@/data/mockData';
-import { ImageOff, Loader2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 
 interface InfoCardProps {
   card: Card;
@@ -13,41 +11,20 @@ interface InfoCardProps {
 const InfoCard = ({ card, slideNumber, totalSlides }: InfoCardProps) => {
   // Support both 'image' and 'image_url' properties
   const originalImageUrl = card.image || (card as any).image_url;
-  const [imageUrl, setImageUrl] = useState<string | null>(originalImageUrl);
   const [imageError, setImageError] = useState(false);
-  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   
-  // Generate a fallback image if original fails
-  const generateFallbackImage = async () => {
-    if (isGeneratingImage) return;
-    
-    setIsGeneratingImage(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('generate-image', {
-        body: { 
-          keyword: card.title,
-          theme: card.content?.substring(0, 100)
-        }
-      });
-
-      if (error) throw error;
-      
-      if (data?.imageUrl) {
-        setImageUrl(data.imageUrl);
-        setImageError(false);
-      }
-    } catch (error) {
-      console.error('Error generating fallback image:', error);
-      // Keep showing placeholder
-    } finally {
-      setIsGeneratingImage(false);
+  // Generate a direct image URL based on card title
+  const getImageUrl = () => {
+    if (originalImageUrl && !imageError) {
+      return originalImageUrl;
     }
+    // Fallback to placeholder.com with theme color
+    const keyword = encodeURIComponent(card.title.substring(0, 20));
+    return `https://via.placeholder.com/800x600/6366f1/ffffff?text=${keyword}`;
   };
 
   const handleImageError = () => {
     setImageError(true);
-    // Try to generate an AI image as fallback
-    generateFallbackImage();
   };
 
   // Get emoji based on card title or content for placeholder
@@ -68,8 +45,12 @@ const InfoCard = ({ card, slideNumber, totalSlides }: InfoCardProps) => {
     if (title.includes('santé') || title.includes('health')) return '🏥';
     if (title.includes('sport') || title.includes('exercice')) return '🏃';
     if (title.includes('cuisine') || title.includes('food')) return '🍳';
+    if (title.includes('voiture') || title.includes('car') || title.includes('nos')) return '🚗';
+    if (title.includes('moteur') || title.includes('engine')) return '⚙️';
     return '📚';
   };
+
+  const imageUrl = getImageUrl();
 
   return (
     <div className="flex-1 flex flex-col h-full">
@@ -87,7 +68,7 @@ const InfoCard = ({ card, slideNumber, totalSlides }: InfoCardProps) => {
         className="relative w-full rounded-2xl overflow-hidden mb-4 shadow-elevated bg-gradient-to-br from-primary/5 to-secondary/10"
         style={{ height: '160px' }}
       >
-        {imageUrl && !imageError ? (
+        {!imageError ? (
           <img
             src={imageUrl}
             alt={card.title}
@@ -95,13 +76,13 @@ const InfoCard = ({ card, slideNumber, totalSlides }: InfoCardProps) => {
             onError={handleImageError}
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center">
+          <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-primary/10 to-secondary/20">
             <span className="text-5xl">{getPlaceholderEmoji()}</span>
           </div>
         )}
         
         {/* Gradient overlay */}
-        {imageUrl && !imageError && (
+        {!imageError && (
           <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent" />
         )}
       </motion.div>
