@@ -343,8 +343,8 @@ const Landing = () => {
             y: -20
           }} transition={{
             duration: 0.3
-          }} className="grid md:grid-cols-3 gap-6 items-stretch">
-              {content.pricing.map((plan, index) => <PricingCard key={index} {...plan} index={index} isMiddle={index === 1} />)}
+          }} className="grid md:grid-cols-3 gap-6 items-start">
+              {content.pricing.map((plan, index) => <PricingCard key={index} {...plan} index={index} />)}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -483,7 +483,7 @@ const Landing = () => {
             <div className="w-7 h-7 bg-gradient-to-br from-primary to-purple-600 rounded-lg flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-primary-foreground" />
             </div>
-            <span className="font-bold text-foreground">SquizzUp</span>
+            <span className="font-bold text-foreground">SkillUp</span>
           </div>
           <div className="flex items-center gap-6 text-sm text-muted-foreground">
             <a href="#" className="hover:text-primary transition-colors">{t.footer.privacy}</a>
