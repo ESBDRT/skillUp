@@ -102,12 +102,12 @@ export const useMemoryConcepts = () => {
       for (const concept of (data || [])) {
         const calculatedStrength = calculateMemoryStrength(concept.last_reviewed_at, concept.interval_days);
         const dbStrength = concept.memory_strength ?? 100;
-        
+
         // Only update in DB if difference is significant (>5%)
         if (Math.abs(calculatedStrength - dbStrength) > 5) {
           conceptsToUpdate.push({ id: concept.id, memory_strength: calculatedStrength });
         }
-        
+
         updatedConcepts.push({
           ...concept,
           memory_strength: calculatedStrength,
@@ -141,9 +141,8 @@ export const useMemoryConcepts = () => {
     const existingConcept = concepts.find(
       c => c.course_id === courseId && c.concept_title === title
     );
-    
+
     if (existingConcept) {
-      console.log('Concept already exists, skipping:', title);
       return existingConcept;
     }
 
@@ -163,12 +162,11 @@ export const useMemoryConcepts = () => {
       if (insertError) {
         // Handle unique constraint violation
         if (insertError.code === '23505') {
-          console.log('Duplicate concept prevented by DB constraint');
           return null;
         }
         throw insertError;
       }
-      
+
       await fetchConcepts();
       return data;
     } catch (error) {
@@ -233,7 +231,7 @@ export const useMemoryConcepts = () => {
   // Group concepts by course
   const getConceptsByCourse = useCallback(() => {
     const grouped: Record<string, { courseTitle: string; concepts: MemoryConcept[] }> = {};
-    
+
     concepts.forEach(concept => {
       if (!grouped[concept.course_id]) {
         grouped[concept.course_id] = {
@@ -243,7 +241,7 @@ export const useMemoryConcepts = () => {
       }
       grouped[concept.course_id].concepts.push(concept);
     });
-    
+
     return grouped;
   }, [concepts]);
 
@@ -255,12 +253,12 @@ export const useMemoryConcepts = () => {
       .eq('concept_id', conceptId)
       .order('reviewed_at', { ascending: false })
       .limit(10);
-    
+
     if (error) {
       console.error('Error fetching review history:', error);
       return [];
     }
-    
+
     return (data || []) as MemoryReview[];
   };
 
@@ -268,18 +266,18 @@ export const useMemoryConcepts = () => {
   const getWeeklyStats = useCallback(async () => {
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-    
+
     const { data, error } = await supabase
       .from('memory_reviews')
       .select('*')
       .eq('user_id', userId)
       .gte('reviewed_at', oneWeekAgo.toISOString());
-    
+
     if (error) {
       console.error('Error fetching weekly stats:', error);
       return { totalReviews: 0, correctReviews: 0 };
     }
-    
+
     const reviews = data || [];
     return {
       totalReviews: reviews.length,

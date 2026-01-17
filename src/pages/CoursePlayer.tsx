@@ -28,75 +28,72 @@ const CoursePlayer = () => {
   const { addXP, completeLesson, addMinutes, user } = useUser();
   const { completeSession } = useCourseSessions();
   const { addConcept } = useMemoryConcepts();
-  
+
   // Check if we have a generated course from state or resuming
   const generatedCourse = location.state?.generatedCourse;
   const resumedProgress = location.state?.resumedProgress;
-  
+
   // Session-specific state from navigation
   const sessionId = location.state?.sessionId;
   const cardsStartIndex = location.state?.cardsStartIndex ?? 0;
   const cardsEndIndex = location.state?.cardsEndIndex;
-  
+
   // State for loading course from DB
   const [dbCourse, setDbCourse] = useState<Lesson | null>(null);
   const [isLoadingCourse, setIsLoadingCourse] = useState(false);
-  
+
   // Determine the lesson source
   const mockLesson = mockLessons.find(l => l.id === courseId);
-  
+
   // Use generated course if available, otherwise find from mock data or DB
-  const lesson: Lesson | undefined = generatedCourse 
+  const lesson: Lesson | undefined = generatedCourse
     ? {
-        id: generatedCourse.id,
-        title: generatedCourse.title,
-        description: generatedCourse.description || '',
-        category: generatedCourse.category,
-        icon: generatedCourse.icon,
-        level: generatedCourse.level,
-        totalXP: generatedCourse.totalXP,
-        estimatedMinutes: generatedCourse.estimatedMinutes,
-        cards: generatedCourse.cards,
-        isCompleted: false,
-        isLocked: false,
-      }
+      id: generatedCourse.id,
+      title: generatedCourse.title,
+      description: generatedCourse.description || '',
+      category: generatedCourse.category,
+      icon: generatedCourse.icon,
+      level: generatedCourse.level,
+      totalXP: generatedCourse.totalXP,
+      estimatedMinutes: generatedCourse.estimatedMinutes,
+      cards: generatedCourse.cards,
+      isCompleted: false,
+      isLocked: false,
+    }
     : mockLesson || dbCourse || undefined;
-  
+
   // Load course from database if not found in mock data
   useEffect(() => {
     const loadCourseFromDB = async () => {
       if (!courseId || generatedCourse || mockLesson) return;
-      
+
       setIsLoadingCourse(true);
       try {
-        console.log('Loading course from DB:', courseId);
-        
         // Fetch course details
         const { data: course, error: courseError } = await supabase
           .from('courses')
           .select('*')
           .eq('id', courseId)
           .single();
-        
+
         if (courseError) {
           console.error('Error fetching course:', courseError);
           return;
         }
-        
+
         // Fetch course cards
         const { data: cards, error: cardsError } = await supabase
           .from('course_cards')
           .select('*')
           .eq('course_id', courseId)
           .order('order_index');
-        
+
         if (cardsError) {
           console.error('Error fetching cards:', cardsError);
           return;
         }
-        
-        console.log(`Loaded course with ${cards?.length || 0} cards`);
-        
+
+
         // Transform cards to the expected format
         const transformedCards: Card[] = (cards || []).map(card => {
           const baseCard = {
@@ -107,13 +104,13 @@ const CoursePlayer = () => {
             xpReward: card.xp_reward,
             image: card.image_url || undefined,
           };
-          
+
           // Handle different card types
           if (card.type === 'quiz' && card.options) {
-            const optionsData = typeof card.options === 'string' 
-              ? JSON.parse(card.options) 
+            const optionsData = typeof card.options === 'string'
+              ? JSON.parse(card.options)
               : card.options;
-            
+
             return {
               ...baseCard,
               options: (optionsData.options || []).map((opt: string, i: number) => ({
@@ -123,14 +120,14 @@ const CoursePlayer = () => {
               })),
             };
           }
-          
+
           if (card.type === 'flashcard') {
             return {
               ...baseCard,
               flashcardBack: card.flashcard_back || '',
             };
           }
-          
+
           if (card.type === 'slider' && card.slider_config) {
             const sliderConfig = typeof card.slider_config === 'string'
               ? JSON.parse(card.slider_config)
@@ -140,17 +137,17 @@ const CoursePlayer = () => {
               sliderConfig: sliderConfig,
             };
           }
-          
+
           if (card.type === 'open-question') {
             return {
               ...baseCard,
               expectedAnswer: card.flashcard_back || '',
             };
           }
-          
+
           return baseCard;
         });
-        
+
         // Build the lesson object
         const loadedLesson: Lesson = {
           id: course.id,
@@ -165,7 +162,7 @@ const CoursePlayer = () => {
           isCompleted: false,
           isLocked: false,
         };
-        
+
         setDbCourse(loadedLesson);
       } catch (error) {
         console.error('Error loading course:', error);
@@ -173,17 +170,17 @@ const CoursePlayer = () => {
         setIsLoadingCourse(false);
       }
     };
-    
+
     loadCourseFromDB();
   }, [courseId, generatedCourse, mockLesson]);
-  
+
   // Filter cards for session if session indices are provided
-  const sessionCards = lesson?.cards 
-    ? (cardsEndIndex !== undefined 
-        ? lesson.cards.slice(cardsStartIndex, cardsEndIndex + 1)
-        : lesson.cards)
+  const sessionCards = lesson?.cards
+    ? (cardsEndIndex !== undefined
+      ? lesson.cards.slice(cardsStartIndex, cardsEndIndex + 1)
+      : lesson.cards)
     : [];
-    
+
   const [currentCardIndex, setCurrentCardIndex] = useState(resumedProgress?.current_card_index || 0);
   const [earnedXP, setEarnedXP] = useState(resumedProgress?.earned_xp || 0);
   const [completedCards, setCompletedCards] = useState<Set<number>>(
@@ -194,7 +191,7 @@ const CoursePlayer = () => {
   const [isComplete, setIsComplete] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [progressId, setProgressId] = useState<string | null>(resumedProgress?.id || null);
-  
+
   const isPreview = !!generatedCourse;
   const isSessionMode = !!sessionId;
 
@@ -304,7 +301,7 @@ const CoursePlayer = () => {
   // Add concept to memory after completing a card
   const saveConceptToMemory = async (card: typeof currentCard) => {
     if (!card || !courseId) return;
-    
+
     if (['info', 'lesson', 'flashcard'].includes(card.type)) {
       try {
         await addConcept(courseId, card.title, card.content);
@@ -319,7 +316,7 @@ const CoursePlayer = () => {
     setEarnedXP(prev => prev + amount);
     setCompletedCards(prev => new Set([...prev, currentCardIndex]));
     addXP(amount);
-    
+
     saveConceptToMemory(currentCard);
   };
 
@@ -330,7 +327,7 @@ const CoursePlayer = () => {
       setIsComplete(true);
       completeLesson(lesson.id);
       addMinutes(lesson.estimatedMinutes);
-      
+
       if (isSessionMode && sessionId) {
         try {
           await completeSession(sessionId, earnedXP);
@@ -338,15 +335,15 @@ const CoursePlayer = () => {
           console.error('Error completing session:', error);
         }
       }
-      
+
       if (progressId) {
         supabase
           .from('course_progress')
           .update({ is_completed: true })
           .eq('id', progressId)
-          .then(() => {});
+          .then(() => { });
       }
-      
+
       confetti({
         particleCount: 100,
         spread: 70,
@@ -384,9 +381,9 @@ const CoursePlayer = () => {
 
   if (isComplete) {
     return (
-      <VictoryScreen 
-        lesson={lesson} 
-        earnedXP={earnedXP} 
+      <VictoryScreen
+        lesson={lesson}
+        earnedXP={earnedXP}
         onClose={() => navigate('/dashboard')}
         isPreview={isPreview}
         generatedCourse={generatedCourse}
@@ -396,11 +393,11 @@ const CoursePlayer = () => {
 
   const renderCard = () => {
     if (!currentCard) return null;
-    
+
     // Calculate slide number for info cards
     const infoCardsUpToNow = cardsToPlay.slice(0, currentCardIndex + 1).filter(c => c.type === 'info').length;
     const totalInfoCards = cardsToPlay.filter(c => c.type === 'info').length;
-    
+
     switch (currentCard.type) {
       case 'info':
         return <InfoCard card={currentCard} slideNumber={infoCardsUpToNow} totalSlides={totalInfoCards} />;
@@ -424,16 +421,16 @@ const CoursePlayer = () => {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur safe-top">
         <div className="px-4 py-3 flex items-center gap-4">
-          <button 
+          <button
             onClick={handleExit}
             className="p-2 hover:bg-secondary rounded-full transition-colors"
           >
             <X className="w-5 h-5 text-foreground" />
           </button>
-          
-          <StoryProgress 
-            current={currentCardIndex} 
-            total={cardsToPlay.length} 
+
+          <StoryProgress
+            current={currentCardIndex}
+            total={cardsToPlay.length}
           />
 
           {isPreview && (
@@ -454,7 +451,7 @@ const CoursePlayer = () => {
       </header>
 
       {/* Card Area */}
-      <main 
+      <main
         className="flex-1 flex flex-col px-4 py-4 relative no-tap-highlight overflow-hidden"
         onClick={handleTap}
       >

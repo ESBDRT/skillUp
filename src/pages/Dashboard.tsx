@@ -6,11 +6,11 @@ import { mockLessons, categories } from '@/data/mockData';
 import { Progress } from '@/components/ui/progress';
 import KnowledgeTree from '@/components/KnowledgeTree';
 import BottomNav from '@/components/BottomNav';
-import { SavedCourses } from '@/components/SavedCourses';
-import { MyCourses } from '@/components/MyCourses';
+import { CourseList } from '@/components/CourseList';
 import { TodaySessions } from '@/components/TodaySessions';
 import { useUserProgress } from '@/hooks/useUserProgress';
 import { useCourseSessions } from '@/hooks/useCourseSessions';
+
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -107,11 +107,10 @@ const Dashboard = () => {
                 </p>
               </div>
             </div>
-            <span className={`text-sm font-medium px-3 py-1 rounded-full ${
-              isOnTrack 
-                ? 'bg-success/10 text-success' 
-                : 'bg-destructive/10 text-destructive'
-            }`}>
+            <span className={`text-sm font-medium px-3 py-1 rounded-full ${isOnTrack
+              ? 'bg-success/10 text-success'
+              : 'bg-destructive/10 text-destructive'
+              }`}>
               {isOnTrack ? 'En bonne voie' : 'En retard'}
             </span>
           </div>
@@ -134,7 +133,7 @@ const Dashboard = () => {
             </div>
             <span className="font-medium text-foreground">Créer un cours</span>
           </button>
-          <button 
+          <button
             onClick={() => navigate('/brain')}
             className="flex items-center gap-3 p-4 bg-card rounded-2xl shadow-card border border-border hover:border-primary transition-colors"
           >
@@ -162,7 +161,7 @@ const Dashboard = () => {
           transition={{ delay: 0.4 }}
           className="mb-8"
         >
-          <MyCourses />
+          <CourseList mode="created" />
         </motion.div>
 
         {/* Saved Courses (In Progress) */}
@@ -172,7 +171,7 @@ const Dashboard = () => {
           transition={{ delay: 0.45 }}
           className="mb-8"
         >
-          <SavedCourses />
+          <CourseList mode="in-progress" />
         </motion.div>
 
         {/* Categories */}
