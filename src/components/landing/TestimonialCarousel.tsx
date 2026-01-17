@@ -202,7 +202,11 @@ const TestimonialCarousel = ({ testimonials, language, planType }: TestimonialCa
               viewport={{ once: true }}
               transition={{ delay: index * 0.1 }}
               whileHover={{ scale: 1.1 }}
-              className="flex items-center justify-center group cursor-default grayscale hover:grayscale-0 opacity-60 hover:opacity-100 transition-all duration-300"
+              className={`flex items-center justify-center group cursor-default transition-all duration-300 ${
+                planType === 'company' 
+                  ? 'opacity-90 hover:opacity-100' 
+                  : 'grayscale hover:grayscale-0 opacity-60 hover:opacity-100'
+              }`}
             >
               <img 
                 src={company.logo} 
