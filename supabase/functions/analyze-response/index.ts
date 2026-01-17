@@ -20,10 +20,10 @@ serve(async (req) => {
   try {
     const { question, expectedAnswer, userAnswer, cardTitle }: AnalyzeRequest = await req.json();
     
-    const FEATHERLESS_API_KEY = Deno.env.get('API');
+    const FEATHERLESS_API_KEY = Deno.env.get('API2');
     
     if (!FEATHERLESS_API_KEY) {
-      throw new Error('API key is not configured');
+      throw new Error('API2 key is not configured');
     }
 
     console.log(`Analyzing response for: ${cardTitle}`);
@@ -68,13 +68,28 @@ Réponse de l'étudiant: "${userAnswer}"
     });
 
     if (!response.ok) {
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ 
+          error: 'Limite de requêtes atteinte.' 
+        }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ 
+          error: 'Crédits insuffisants.' 
+        }), {
+          status: 402,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
       throw new Error(`API error: ${response.status}`);
     }
 
     const aiResponse = await response.json();
     const content = aiResponse.choices?.[0]?.message?.content || '';
     
-    // Parse the JSON response
     try {
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -91,7 +106,6 @@ Réponse de l'étudiant: "${userAnswer}"
       console.error('Failed to parse AI response:', parseError);
     }
 
-    // Fallback response
     return new Response(JSON.stringify({
       isValid: true,
       message: "Bonne réflexion ! Votre réponse montre une compréhension du sujet.",

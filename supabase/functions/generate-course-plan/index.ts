@@ -29,10 +29,10 @@ serve(async (req) => {
     
     console.log(`Generating course plan: theme="${theme}", minutes=${dailyMinutes}, level=${level}, days=${durationDays}`);
 
-    const FEATHERLESS_API_KEY = Deno.env.get('API');
+    const FEATHERLESS_API_KEY = Deno.env.get('API2');
     
     if (!FEATHERLESS_API_KEY) {
-      throw new Error('API key is not configured');
+      throw new Error('API2 key is not configured');
     }
 
     const knownConceptsInstruction = knownKeywords && knownKeywords.length > 0
@@ -98,7 +98,6 @@ Tu DOIS répondre UNIQUEMENT avec ce JSON, sans texte avant ou après :
 
     let planData;
     
-    // Strategy 1: Direct JSON match
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       try {
@@ -109,7 +108,6 @@ Tu DOIS répondre UNIQUEMENT avec ce JSON, sans texte avant ou après :
       }
     }
     
-    // Strategy 2: Code block extraction
     if (!planData) {
       const codeBlockMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
       if (codeBlockMatch) {
@@ -122,7 +120,6 @@ Tu DOIS répondre UNIQUEMENT avec ce JSON, sans texte avant ou après :
       }
     }
     
-    // Strategy 3: Full content as JSON
     if (!planData) {
       try {
         planData = JSON.parse(content.trim());
@@ -132,7 +129,6 @@ Tu DOIS répondre UNIQUEMENT avec ce JSON, sans texte avant ou après :
       }
     }
     
-    // Fallback: Generate a basic plan structure
     if (!planData || !planData.days) {
       console.log('All parsing strategies failed, using fallback plan');
       
@@ -160,7 +156,6 @@ Tu DOIS répondre UNIQUEMENT avec ce JSON, sans texte avant ou après :
       };
     }
 
-    // Ensure proper structure
     const result = {
       courseTitle: planData.courseTitle || `Cours sur ${theme}`,
       courseDescription: planData.courseDescription || `Parcours d'apprentissage sur ${theme}`,
