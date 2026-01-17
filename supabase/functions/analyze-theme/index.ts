@@ -20,10 +20,10 @@ serve(async (req) => {
     
     console.log(`Analyzing theme: "${theme}" for level: ${level}`);
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const FEATHERLESS_API_KEY = Deno.env.get('API');
     
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    if (!FEATHERLESS_API_KEY) {
+      throw new Error('API key is not configured');
     }
 
     const levelDescriptions = {
@@ -32,14 +32,14 @@ serve(async (req) => {
       expert: 'maîtrise avancée, concepts complexes'
     };
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch('https://api.featherless.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${FEATHERLESS_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
+        model: 'mistralai/Mistral-7B-v0.1',
         messages: [
           {
             role: 'system',
@@ -75,17 +75,18 @@ RÈGLES pour keywords :
 - Concepts que quelqu'un pourrait déjà connaître avant d'étudier ce sujet
 - Variés : basiques et plus avancés selon le niveau`
           }
-        ]
+        ],
+        max_tokens: 1024
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('AI Gateway error:', response.status, errorText);
+      console.error('Featherless API error:', response.status, errorText);
       
       if (response.status === 402) {
         return new Response(JSON.stringify({ 
-          error: 'Crédits IA insuffisants. Veuillez recharger votre compte dans Paramètres → Workspace → Usage.' 
+          error: 'Crédits API insuffisants.' 
         }), {
           status: 402,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -101,7 +102,7 @@ RÈGLES pour keywords :
         });
       }
       
-      throw new Error(`AI Gateway error: ${response.status}`);
+      throw new Error(`API error: ${response.status}`);
     }
 
     const aiResponse = await response.json();

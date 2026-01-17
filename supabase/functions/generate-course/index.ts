@@ -103,12 +103,12 @@ serve(async (req) => {
     
     console.log(`Generating course: theme="${theme}", minutes=${dailyMinutes}, level=${level}, knownKeywords=${knownKeywords?.length || 0}, hasPlan=${!!coursePlan}`);
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const FEATHERLESS_API_KEY = Deno.env.get('API');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
     
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    if (!FEATHERLESS_API_KEY) {
+      throw new Error('API key is not configured');
     }
 
     // If we have a course plan, use it to guide generation
@@ -162,149 +162,52 @@ Le contenu doit être en français, éducatif et engageant.`;
 
     const userPrompt = `Crée un cours en EXACTEMENT ${totalConcepts} SLIDES sur : "${theme}"
 
-STRUCTURE OBLIGATOIRE :
+RÉPONDS UNIQUEMENT avec un JSON valide dans ce format exact :
+{
+  "title": "Titre accrocheur du cours (max 60 caractères)",
+  "description": "Description du cours (2-3 phrases)",
+  "category": "Science|Histoire|Psychologie|Finance|Santé|Art|Technologie",
+  "icon": "📚",
+  "lessonSections": [
+    {
+      "title": "Titre court slide 1 (max 50 caractères)",
+      "content": "Contenu RICHE de 150-200 mots avec **mots en gras** et exemples concrets. Utilise > pour les callouts.",
+      "imageKeyword": "keyword english 2-3 words"
+    }
+  ],
+  "quizQuestions": [
+    {"type": "quiz", "question": "Question?", "options": ["Option A", "Option B", "Option C", "Option D"], "correctIndex": 0},
+    {"type": "flashcard", "question": "Concept", "answer": "Définition détaillée de 50-100 mots"}
+  ]
+}
 
-1. SLIDES DE CONTENU (${totalConcepts} slides) :
-   Chaque slide DOIT contenir :
-   - title: Titre court (max 40 caractères pour mobile)
-   - content: Texte RICHE de 150-200 mots FORMATÉ EN MARKDOWN avec :
-     * Des **mots clés en gras** pour les concepts importants (utilise beaucoup le gras)
-     * Des sauts de ligne (\\n\\n) entre les paragraphes
-     * Une explication claire du concept
-     * Des exemples dans des CALLOUTS avec > (blockquote markdown)
-     * Une analogie pour simplifier
-     * Une application pratique
-   - imageKeyword: 2-3 mots anglais pour l'image générée par IA
-
-   EXEMPLE de contenu attendu (format Markdown) :
-   "**La photosynthèse** est le processus fondamental par lequel les **plantes** transforment la **lumière** en énergie.\\n\\n**Comment ça marche ?** Les feuilles captent la lumière du soleil, absorbent le **CO2** et l'eau pour produire du **glucose**.\\n\\n> 💡 **Exemple concret :** Un grand chêne produit assez d'oxygène pour 4 personnes par jour. Les algues marines génèrent 50% de l'oxygène terrestre !\\n\\n**Application pratique :** C'est pourquoi avoir des **plantes d'intérieur** améliore la qualité de l'air chez vous."
-
-2. TESTS (EXACTEMENT ${quizCount} questions) :
-   SEULEMENT 2 TYPES AUTORISÉS :
-   
-   - QCM : { "type": "quiz", "question": "Question claire ?", "options": ["Option complète A", "Option complète B", "Option complète C", "Option complète D"], "correctIndex": 0 }
-     OBLIGATOIRE pour QCM : options (4 choix) ET correctIndex (0-3)
-   
-   - Flashcard : { "type": "flashcard", "question": "Concept à mémoriser ?", "answer": "Réponse détaillée de 50-100 mots expliquant le concept." }
-     OBLIGATOIRE pour Flashcard : answer (50-100 mots minimum, PAS une répétition de la question)
-     
-   EXEMPLE FLASHCARD CORRECT :
-   { "type": "flashcard", "question": "Quel est le rôle des mitochondries ?", "answer": "Les mitochondries sont les centrales énergétiques de la cellule. Elles produisent l'ATP par respiration cellulaire, convertissant glucose et oxygène en énergie. Sans elles, nos cellules ne pourraient pas fonctionner." }
-
-IMPORTANT :
-- EXACTEMENT ${totalConcepts} slides, pas plus, pas moins
-- Titres COURTS (max 40 caractères) pour affichage mobile
-- Contenu LONG et RICHE (150-200 mots par slide) avec formatage MARKDOWN
-- Utilise > pour les exemples (sera affiché en callout avec 💡)
+IMPORTANT:
+- EXACTEMENT ${totalConcepts} slides dans lessonSections
+- Titres COURTS (max 40 caractères) pour mobile
+- Contenu RICHE (150-200 mots) avec **gras** et > callouts
 - SEULEMENT ${quizCount} tests
-- Options de QCM = phrases complètes, pas de lettres
-- Flashcard DOIT avoir une réponse détaillée (answer) de 50-100 mots
-- PAS de type "open-question" ou "slider"`;
+- Options QCM = phrases complètes
+- Flashcard DOIT avoir answer de 50-100 mots`;
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch('https://api.featherless.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${FEATHERLESS_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
+        model: 'mistralai/Mistral-7B-v0.1',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        tools: [
-          {
-            type: 'function',
-            function: {
-              name: 'create_course',
-              description: 'Crée un cours éducatif structuré en slides',
-              parameters: {
-                type: 'object',
-                properties: {
-                  title: {
-                    type: 'string',
-                    description: 'Titre accrocheur du cours (max 60 caractères)'
-                  },
-                  description: {
-                    type: 'string',
-                    description: 'Description du cours (2-3 phrases)'
-                  },
-                  category: {
-                    type: 'string',
-                    description: 'Catégorie (Science, Histoire, Psychologie, Finance, Santé, Art, Technologie)'
-                  },
-                  icon: {
-                    type: 'string',
-                    description: 'Un emoji représentant le cours'
-                  },
-                  lessonSections: {
-                    type: 'array',
-                    description: 'Les slides du cours (5-7 maximum)',
-                    items: {
-                      type: 'object',
-                      properties: {
-                        title: {
-                          type: 'string',
-                          description: 'Titre court de la slide (max 50 caractères)'
-                        },
-                        content: {
-                          type: 'string',
-                          description: 'Contenu RICHE de 150-200 mots avec exemples concrets'
-                        },
-                        imageKeyword: {
-                          type: 'string',
-                          description: 'Mot-clé simple pour image (2-3 mots en anglais)'
-                        }
-                      },
-                      required: ['title', 'content', 'imageKeyword']
-                    }
-                  },
-                  quizQuestions: {
-                    type: 'array',
-                    description: 'Questions de test (2-3 maximum, QCM ou flashcard uniquement)',
-                    items: {
-                      type: 'object',
-                      properties: {
-                        type: {
-                          type: 'string',
-                          enum: ['quiz', 'flashcard'],
-                          description: 'Type de question (quiz ou flashcard uniquement)'
-                        },
-                        question: {
-                          type: 'string',
-                          description: 'La question ou le concept'
-                        },
-                        options: {
-                          type: 'array',
-                          items: { type: 'string' },
-                          description: 'Options pour QCM (4 choix, phrases complètes)'
-                        },
-                        correctIndex: {
-                          type: 'number',
-                          description: 'OBLIGATOIRE pour quiz : Index (0-3) de la bonne réponse'
-                        },
-                        answer: {
-                          type: 'string',
-                          description: 'OBLIGATOIRE pour flashcard : Réponse détaillée de 50-100 mots'
-                        }
-                      },
-                      required: ['type', 'question', 'answer']
-                    }
-                  }
-                },
-                required: ['title', 'description', 'category', 'icon', 'lessonSections', 'quizQuestions']
-              }
-            }
-          }
-        ],
-        tool_choice: { type: 'function', function: { name: 'create_course' } }
+        max_tokens: 4096
       })
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('AI Gateway error:', response.status, errorText);
+      console.error('Featherless API error:', response.status, errorText);
       
       if (response.status === 429) {
         return new Response(JSON.stringify({ 
@@ -317,99 +220,32 @@ IMPORTANT :
       
       if (response.status === 402) {
         return new Response(JSON.stringify({ 
-          error: 'Crédits insuffisants. Veuillez recharger votre compte.' 
+          error: 'Crédits insuffisants.' 
         }), {
           status: 402,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
       
-      throw new Error(`AI Gateway error: ${response.status}`);
+      throw new Error(`API error: ${response.status}`);
     }
 
     const aiResponse = await response.json();
     console.log('AI Response received');
 
-    // Try to get course data from tool call first
     let courseData;
-    const toolCall = aiResponse.choices?.[0]?.message?.tool_calls?.[0];
+    const messageContent = aiResponse.choices?.[0]?.message?.content;
     
-    if (toolCall && toolCall.function?.name === 'create_course') {
+    if (messageContent) {
+      console.log('Attempting to parse from message content');
       try {
-        courseData = JSON.parse(toolCall.function.arguments);
-        console.log('Parsed course data from tool call');
-      } catch (parseError) {
-        console.error('Failed to parse tool call arguments:', parseError);
-      }
-    }
-    
-    // Fallback: try to extract from message content if tool call failed
-    if (!courseData) {
-      const messageContent = aiResponse.choices?.[0]?.message?.content;
-      if (messageContent) {
-        console.log('Attempting to parse from message content');
-        try {
-          const jsonMatch = messageContent.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            courseData = JSON.parse(jsonMatch[0]);
-            console.log('Parsed course data from message content');
-          }
-        } catch (contentParseError) {
-          console.error('Failed to parse message content:', contentParseError);
+        const jsonMatch = messageContent.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          courseData = JSON.parse(jsonMatch[0]);
+          console.log('Parsed course data from message content');
         }
-      }
-    }
-    
-    // If still no course data, try a simpler request
-    if (!courseData || !courseData.lessonSections) {
-      console.log('Creating fallback course structure');
-      const fallbackResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { 
-              role: 'user', 
-              content: `${userPrompt}
-
-RÉPONDS UNIQUEMENT avec un JSON valide dans ce format exact, sans aucun texte avant ou après :
-{
-  "title": "Titre du cours",
-  "description": "Description en 2-3 phrases",
-  "category": "Catégorie",
-  "icon": "📚",
-  "lessonSections": [
-    {"title": "Section 1", "content": "Contenu riche de 150-200 mots avec exemples...", "imageKeyword": "keyword"}
-  ],
-  "quizQuestions": [
-    {"type": "quiz", "question": "Question?", "options": ["Option A complète", "Option B complète", "Option C complète", "Option D complète"], "correctIndex": 0},
-    {"type": "flashcard", "question": "Concept", "answer": "Définition complète"}
-  ]
-}`
-            }
-          ]
-        })
-      });
-
-      if (fallbackResponse.ok) {
-        const fallbackData = await fallbackResponse.json();
-        const fallbackContent = fallbackData.choices?.[0]?.message?.content || '';
-        console.log('Fallback response received');
-        
-        try {
-          const jsonMatch = fallbackContent.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            courseData = JSON.parse(jsonMatch[0]);
-            console.log('Parsed course data from fallback');
-          }
-        } catch (fallbackParseError) {
-          console.error('Failed to parse fallback content:', fallbackParseError);
-        }
+      } catch (contentParseError) {
+        console.error('Failed to parse message content:', contentParseError);
       }
     }
 
