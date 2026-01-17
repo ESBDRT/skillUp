@@ -98,18 +98,28 @@ serve(async (req) => {
 
     // 2. Insert all cards with proper format
     const cardsToInsert = course.cards.map((card, index) => {
-      // Handle options - can be array of objects or array of strings
+      // Handle options - normalize to { options: string[], correctIndex: number }
       let optionsData = null;
-      if (card.options && Array.isArray(card.options)) {
-        if (typeof card.options[0] === 'string') {
-          // Already string array from new generation
-          optionsData = { options: card.options };
-        } else {
-          // Object array with isCorrect
-          const options = card.options.map((opt: any) => opt.text || opt);
-          const correctIndex = card.options.findIndex((opt: any) => opt.isCorrect);
-          optionsData = { options, correctIndex };
+      if (card.options && Array.isArray(card.options) && card.options.length > 0) {
+        const firstOpt = card.options[0];
+        
+        if (typeof firstOpt === 'string') {
+          // Already string array - need correctIndex from card
+          const correctIdx = (card as any).correctIndex ?? 0;
+          optionsData = { options: card.options, correctIndex: correctIdx };
+        } else if (typeof firstOpt === 'object' && firstOpt !== null) {
+          // Object array with { id?, text, isCorrect }
+          const options = card.options.map((opt: any) => 
+            typeof opt === 'string' ? opt : (opt.text || String(opt))
+          );
+          const correctIndex = card.options.findIndex((opt: any) => opt.isCorrect === true);
+          optionsData = { 
+            options, 
+            correctIndex: correctIndex >= 0 ? correctIndex : 0 
+          };
         }
+        
+        console.log(`Card ${index} (${card.type}): options=${JSON.stringify(optionsData)}`);
       }
 
       return {

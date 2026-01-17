@@ -111,13 +111,37 @@ const CoursePlayer = () => {
               ? JSON.parse(card.options)
               : card.options;
 
+            // Handle both formats: { options: string[], correctIndex } or direct array of objects
+            const rawOptions = optionsData.options || optionsData;
+            const correctIdx = optionsData.correctIndex ?? 0;
+            
+            let parsedOptions: Array<{ id: string; text: string; isCorrect: boolean }> = [];
+            
+            if (Array.isArray(rawOptions)) {
+              parsedOptions = rawOptions.map((opt: any, i: number) => {
+                // Handle string options
+                if (typeof opt === 'string') {
+                  return {
+                    id: `opt-${i}`,
+                    text: opt,
+                    isCorrect: i === correctIdx,
+                  };
+                }
+                // Handle object options with isCorrect property
+                if (typeof opt === 'object' && opt !== null) {
+                  return {
+                    id: opt.id || `opt-${i}`,
+                    text: opt.text || String(opt),
+                    isCorrect: opt.isCorrect === true || i === correctIdx,
+                  };
+                }
+                return { id: `opt-${i}`, text: String(opt), isCorrect: i === correctIdx };
+              });
+            }
+
             return {
               ...baseCard,
-              options: (optionsData.options || []).map((opt: string, i: number) => ({
-                id: `opt-${i}`,
-                text: opt,
-                isCorrect: i === optionsData.correctIndex,
-              })),
+              options: parsedOptions,
             };
           }
 

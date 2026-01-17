@@ -183,8 +183,13 @@ STRUCTURE OBLIGATOIRE :
    SEULEMENT 2 TYPES AUTORISÉS :
    
    - QCM : { "type": "quiz", "question": "Question claire ?", "options": ["Option complète A", "Option complète B", "Option complète C", "Option complète D"], "correctIndex": 0 }
+     OBLIGATOIRE pour QCM : options (4 choix) ET correctIndex (0-3)
    
-   - Flashcard : { "type": "flashcard", "question": "Concept à mémoriser", "answer": "Définition complète et détaillée" }
+   - Flashcard : { "type": "flashcard", "question": "Concept à mémoriser ?", "answer": "Réponse détaillée de 50-100 mots expliquant le concept." }
+     OBLIGATOIRE pour Flashcard : answer (50-100 mots minimum, PAS une répétition de la question)
+     
+   EXEMPLE FLASHCARD CORRECT :
+   { "type": "flashcard", "question": "Quel est le rôle des mitochondries ?", "answer": "Les mitochondries sont les centrales énergétiques de la cellule. Elles produisent l'ATP par respiration cellulaire, convertissant glucose et oxygène en énergie. Sans elles, nos cellules ne pourraient pas fonctionner." }
 
 IMPORTANT :
 - EXACTEMENT ${totalConcepts} slides, pas plus, pas moins
@@ -193,6 +198,7 @@ IMPORTANT :
 - Utilise > pour les exemples (sera affiché en callout avec 💡)
 - SEULEMENT ${quizCount} tests
 - Options de QCM = phrases complètes, pas de lettres
+- Flashcard DOIT avoir une réponse détaillée (answer) de 50-100 mots
 - PAS de type "open-question" ou "slider"`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -276,14 +282,14 @@ IMPORTANT :
                         },
                         correctIndex: {
                           type: 'number',
-                          description: 'Index de la bonne réponse pour QCM (0-3)'
+                          description: 'OBLIGATOIRE pour quiz : Index (0-3) de la bonne réponse'
                         },
                         answer: {
                           type: 'string',
-                          description: 'Réponse pour flashcard'
+                          description: 'OBLIGATOIRE pour flashcard : Réponse détaillée de 50-100 mots'
                         }
                       },
-                      required: ['type', 'question']
+                      required: ['type', 'question', 'answer']
                     }
                   }
                 },
@@ -490,27 +496,42 @@ RÉPONDS UNIQUEMENT avec un JSON valide dans ce format exact, sans aucun texte a
           });
         }
       } else if (questionType === 'flashcard') {
-        // Ensure flashcard has valid back content
-        const backContent = quiz.answer || quiz.expectedAnswer || quiz.question || '';
-        if (backContent && backContent.trim().length >= 3) {
+        // Ensure flashcard has valid back content - prioritize answer field
+        const backContent = quiz.answer || quiz.expectedAnswer || quiz.backContent || '';
+        
+        console.log(`Flashcard ${index + 1}: question="${quiz.question?.substring(0, 50)}", answer="${backContent?.substring(0, 50)}"`);
+        
+        if (backContent && backContent.trim().length >= 10 && backContent.trim() !== quiz.question?.trim()) {
           cards.push({
             type: 'flashcard',
             title: `Mémorisation ${index + 1}`,
             content: quiz.question,
-            flashcard_back: backContent,
+            flashcard_back: backContent.trim(),
             xpReward: 20
           });
         } else {
-          console.log(`Skipping flashcard ${index + 1} without valid answer`);
+          // Fallback: create a meaningful response based on the question
+          console.warn(`Flashcard ${index + 1} has no valid answer, generating placeholder`);
+          const fallbackAnswer = `La réponse à "${quiz.question}" est un concept clé de ce cours. Prenez le temps de réfléchir avant de retourner la carte.`;
+          cards.push({
+            type: 'flashcard',
+            title: `Mémorisation ${index + 1}`,
+            content: quiz.question,
+            flashcard_back: fallbackAnswer,
+            xpReward: 20
+          });
         }
       } else {
         // Convert any other type to flashcard with validation
-        const backContent = quiz.answer || quiz.expectedAnswer || 'Concept clé à retenir';
+        const backContent = quiz.answer || quiz.expectedAnswer || '';
+        const finalBack = backContent.trim().length >= 10 
+          ? backContent.trim() 
+          : `Réflexion sur : ${quiz.question}. Ce concept est fondamental pour comprendre le sujet.`;
         cards.push({
           type: 'flashcard',
           title: `Mémorisation ${index + 1}`,
           content: quiz.question,
-          flashcard_back: backContent,
+          flashcard_back: finalBack,
           xpReward: 20
         });
       }
