@@ -39,44 +39,24 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'mistralai/Mistral-7B-v0.1',
+        model: 'mistralai/Mistral-7B-Instruct-v0.3',
         messages: [
           {
-            role: 'system',
-            content: `Tu es un expert pédagogue. Tu analyses les thèmes de cours pour aider les apprenants.`
-          },
-          {
             role: 'user',
-            content: `Analyse ce thème de cours : "${theme}"
+            content: `Tu es un expert pédagogue. Analyse ce thème de cours : "${theme}"
 
 Niveau demandé : ${level} (${levelDescriptions[level]})
 
 TÂCHES :
-1. Évalue si le thème est assez précis pour créer un bon cours
-2. Génère 8-12 mots-clés/concepts que l'apprenant pourrait déjà connaître
+1. Évalue si le thème est assez précis pour créer un bon cours (isValid: true si spécifique comme "La photosynthèse", false si trop vague comme "Science")
+2. Génère 8-10 mots-clés/concepts que l'apprenant pourrait déjà connaître
 
-RETOURNE UNIQUEMENT un JSON avec ce format exact :
-{
-  "isValid": true/false,
-  "feedback": "Message court expliquant si le thème est bon ou comment l'améliorer",
-  "suggestedTheme": "Si le thème est trop vague, suggestion plus précise (sinon null)",
-  "keywords": [
-    {"id": "1", "label": "Concept 1", "description": "Courte description"},
-    {"id": "2", "label": "Concept 2", "description": "Courte description"}
-  ]
-}
-
-RÈGLES pour isValid :
-- true si le thème est spécifique et clair (ex: "La photosynthèse", "Les bases du Python", "La Révolution française")
-- false si trop vague (ex: "Science", "Histoire", "Programmation") ou incompréhensible
-
-RÈGLES pour keywords :
-- Concepts adaptés au niveau ${level}
-- Concepts que quelqu'un pourrait déjà connaître avant d'étudier ce sujet
-- Variés : basiques et plus avancés selon le niveau`
+Tu DOIS répondre UNIQUEMENT avec ce JSON, sans aucun texte avant ou après :
+{"isValid":true,"feedback":"Le thème est bon","suggestedTheme":null,"keywords":[{"id":"1","label":"Concept 1","description":"Description"},{"id":"2","label":"Concept 2","description":"Description"}]}`
           }
         ],
-        max_tokens: 1024
+        max_tokens: 1024,
+        temperature: 0.3
       }),
     });
 
@@ -108,17 +88,77 @@ RÈGLES pour keywords :
     const aiResponse = await response.json();
     const content = aiResponse.choices?.[0]?.message?.content || '';
     
-    // Extract JSON from response
+    console.log('Raw AI response:', content);
+    
+    // Try multiple parsing strategies
+    let analysis;
+    
+    // Strategy 1: Direct JSON match
     const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('Invalid AI response format');
+    if (jsonMatch) {
+      try {
+        analysis = JSON.parse(jsonMatch[0]);
+        console.log('Parsed with strategy 1 (JSON match)');
+      } catch (e) {
+        console.log('Strategy 1 failed:', e);
+      }
     }
     
-    const analysis = JSON.parse(jsonMatch[0]);
+    // Strategy 2: Try to extract from markdown code blocks
+    if (!analysis) {
+      const codeBlockMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      if (codeBlockMatch) {
+        try {
+          analysis = JSON.parse(codeBlockMatch[1].trim());
+          console.log('Parsed with strategy 2 (code block)');
+        } catch (e) {
+          console.log('Strategy 2 failed:', e);
+        }
+      }
+    }
     
-    console.log(`Theme analysis complete: isValid=${analysis.isValid}, keywords=${analysis.keywords?.length || 0}`);
+    // Strategy 3: Try parsing the entire content as JSON
+    if (!analysis) {
+      try {
+        analysis = JSON.parse(content.trim());
+        console.log('Parsed with strategy 3 (full content)');
+      } catch (e) {
+        console.log('Strategy 3 failed:', e);
+      }
+    }
+    
+    // Fallback: Generate a valid response based on the theme
+    if (!analysis || typeof analysis.isValid === 'undefined') {
+      console.log('All parsing strategies failed, using fallback');
+      const isValidTheme = theme.length > 5 && theme.split(' ').length >= 2;
+      
+      analysis = {
+        isValid: isValidTheme,
+        feedback: isValidTheme 
+          ? "Ce thème semble adapté pour créer un cours."
+          : "Ce thème pourrait être plus précis. Essayez d'ajouter plus de détails.",
+        suggestedTheme: isValidTheme ? null : `${theme} - les bases`,
+        keywords: [
+          { id: "1", label: "Introduction", description: "Les concepts fondamentaux" },
+          { id: "2", label: "Vocabulaire", description: "Les termes clés à connaître" },
+          { id: "3", label: "Principes", description: "Les règles de base" },
+          { id: "4", label: "Applications", description: "Comment appliquer ces connaissances" },
+          { id: "5", label: "Exemples", description: "Des cas pratiques" }
+        ]
+      };
+    }
+    
+    // Ensure proper structure
+    const result = {
+      isValid: Boolean(analysis.isValid),
+      feedback: analysis.feedback || "Thème analysé.",
+      suggestedTheme: analysis.suggestedTheme || null,
+      keywords: Array.isArray(analysis.keywords) ? analysis.keywords.slice(0, 12) : []
+    };
+    
+    console.log(`Theme analysis complete: isValid=${result.isValid}, keywords=${result.keywords.length}`);
 
-    return new Response(JSON.stringify(analysis), {
+    return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
