@@ -98,7 +98,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'mistralai/Mistral-7B-Instruct-v0.3',
+        model: 'mistralai/Mistral-7B-v0.1',
         messages: [
           {
             role: 'user',
