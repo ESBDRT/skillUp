@@ -42,123 +42,17 @@ const levelNames = {
   expert: 'Expert'
 };
 
-// Search for a relevant image using Perplexity
-async function searchWebImage(query: string, perplexityKey: string): Promise<string | null> {
-  try {
-    console.log(`Searching image for: ${query.substring(0, 50)}...`);
-    
-    const response = await fetch('https://api.perplexity.ai/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${perplexityKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'sonar',
-        messages: [{
-          role: 'user',
-          content: `Find me a high-quality, free-to-use image URL for: "${query}". 
-          Search on Unsplash (images.unsplash.com) or Pexels (images.pexels.com).
-          Return ONLY the direct image URL starting with https://images.unsplash.com/ or https://images.pexels.com/, nothing else. No explanation, just the URL.`
-        }]
-      })
-    });
-
-    if (!response.ok) {
-      console.error('Perplexity image search failed:', response.status);
-      return null;
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '';
-    
-    // Extract URL from the response
-    const urlMatch = content.match(/(https:\/\/images\.(unsplash|pexels)\.com\/[^\s"'<>]+)/i);
-    if (urlMatch) {
-      console.log('Image found:', urlMatch[1].substring(0, 60));
-      return urlMatch[1];
-    }
-    
-    // Fallback: try to extract any image URL
-    const anyImageMatch = content.match(/(https:\/\/[^\s"'<>]+\.(jpg|jpeg|png|webp))/i);
-    if (anyImageMatch) {
-      console.log('Fallback image found:', anyImageMatch[1].substring(0, 60));
-      return anyImageMatch[1];
-    }
-    
-    return null;
-  } catch (error) {
-    console.error('Error searching image:', error);
-    return null;
-  }
+// Get image from Unsplash (no API key required)
+function getUnsplashImage(keyword: string): string {
+  const cleanKeyword = keyword.trim().replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, ',');
+  return `https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=600&fit=crop&q=80`;
 }
 
-// Search for learning resources using Perplexity
-async function searchResources(theme: string, perplexityKey: string): Promise<any> {
-  try {
-    console.log(`Searching resources for: ${theme}`);
-    
-    const response = await fetch('https://api.perplexity.ai/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${perplexityKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'sonar',
-        messages: [{
-          role: 'user',
-          content: `Pour apprendre "${theme}", trouve-moi des ressources de qualité :
-          - 2-3 vidéos YouTube (tutoriels, cours, documentaires)
-          - 1-2 repos GitHub populaires et pertinents (si applicable au sujet)
-          - 2-3 articles ou sites de référence
-
-          IMPORTANT: Retourne UNIQUEMENT un JSON valide avec ce format exact, sans aucun texte avant ou après :
-          {
-            "youtube": [{"title": "titre exact de la vidéo", "url": "https://youtube.com/watch?v=...", "source": "nom de la chaîne"}],
-            "github": [{"title": "nom-du-repo", "url": "https://github.com/...", "description": "courte description"}],
-            "articles": [{"title": "titre de l'article", "url": "https://...", "source": "nom du site"}]
-          }
-          
-          Les URLs doivent être de vraies URLs existantes et fonctionnelles.`
-        }]
-      })
-    });
-
-    if (!response.ok) {
-      console.error('Perplexity resources search failed:', response.status);
-      return { youtube: [], github: [], articles: [] };
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '';
-    
-    // Try to extract JSON from the response
-    try {
-      // Find JSON in the response
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        console.log('Resources found:', {
-          youtube: parsed.youtube?.length || 0,
-          github: parsed.github?.length || 0,
-          articles: parsed.articles?.length || 0
-        });
-        return {
-          youtube: parsed.youtube || [],
-          github: parsed.github || [],
-          articles: parsed.articles || []
-        };
-      }
-    } catch (parseError) {
-      console.error('Failed to parse resources JSON:', parseError);
-    }
-    
-    return { youtube: [], github: [], articles: [] };
-  } catch (error) {
-    console.error('Error searching resources:', error);
-    return { youtube: [], github: [], articles: [] };
-  }
+// Get a themed image from Unsplash Source API
+function getThemedImage(keyword: string, index: number): string {
+  const keywords = encodeURIComponent(keyword.toLowerCase().replace(/[^a-zA-Z0-9\s]/g, ''));
+  // Use different seed for each image to get variety
+  return `https://source.unsplash.com/800x600/?${keywords}&sig=${index}`;
 }
 
 serve(async (req) => {
@@ -172,19 +66,15 @@ serve(async (req) => {
     console.log(`Generating course: theme="${theme}", minutes=${dailyMinutes}, level=${level}, knownKeywords=${knownKeywords?.length || 0}`);
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    const PERPLEXITY_API_KEY = Deno.env.get('perplexity');
     
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
-    
-    if (!PERPLEXITY_API_KEY) {
-      throw new Error('PERPLEXITY_API_KEY is not configured');
-    }
 
     // Calculate structure based on daily minutes
-    const sectionCount = dailyMinutes <= 5 ? 3 : dailyMinutes <= 10 ? 4 : dailyMinutes <= 15 ? 5 : 6;
-    const quizQuestions = Math.max(2, Math.floor(dailyMinutes / 5));
+    // More sections = more slides, better granularity
+    const sectionCount = dailyMinutes <= 5 ? 4 : dailyMinutes <= 10 ? 6 : dailyMinutes <= 15 ? 8 : 10;
+    const quizCount = Math.max(3, Math.floor(dailyMinutes / 3));
 
     const knownConceptsInstruction = knownKeywords && knownKeywords.length > 0
       ? `\n\nIMPORTANT - ADAPTATION AU NIVEAU DE L'APPRENANT :
@@ -195,41 +85,49 @@ L'apprenant a indiqué qu'il connaît déjà ces concepts : ${knownKeywords.join
 - Proposer des nuances et des approfondissements sur ces sujets`
       : '';
 
-    const systemPrompt = `Tu es un expert pédagogue qui crée des cours éducatifs de haute qualité, similaires à des documents PDF professionnels.
+    const systemPrompt = `Tu es un expert pédagogue qui crée des cours éducatifs de haute qualité, structurés comme des présentations modernes type slides.
 
 Niveau de difficulté : ${levelNames[level]}
 ${levelInstructions[level]}${knownConceptsInstruction}
 
-Tu dois créer un VRAI COURS structuré comme un document professionnel :
-- Titre principal du cours
-- Sections avec sous-titres clairs
-- Paragraphes riches et détaillés (4-6 phrases par paragraphe)
-- Exemples concrets et chiffres
-- Transitions fluides entre les sections
+Tu dois créer un VRAI COURS structuré en SLIDES INDIVIDUELLES :
+- Chaque section = 1 slide séparée avec un concept clair
+- Contenu concis mais riche (3-5 phrases par slide max)
+- Progression logique entre les slides
+- Variété dans les types de tests
 
-Le contenu doit être en français, éducatif, engageant et approfondi.`;
+Le contenu doit être en français, éducatif, engageant et bien structuré.`;
 
-    const userPrompt = `Crée un cours complet et professionnel sur : "${theme}"
+    const userPrompt = `Crée un cours en ${sectionCount} SLIDES sur : "${theme}"
 
-STRUCTURE DU COURS (comme un PDF/document) :
+STRUCTURE DU COURS EN SLIDES :
 
-1. PARTIE PRINCIPALE - LE COURS (type: "lesson")
-   Une seule carte "lesson" contenant ${sectionCount} SECTIONS, chaque section avec :
-   - Un titre de section clair
-   - Un contenu riche de 2-3 paragraphes (chaque paragraphe = 4-6 phrases)
-   - Un mot-clé pour l'image (imageKeyword) : 2-3 mots décrivant une image pertinente
+1. SLIDES DE CONTENU (${sectionCount} slides) :
+   Chaque slide contient UN concept clé avec :
+   - title: Titre court et accrocheur (max 50 caractères)
+   - content: Explication claire (3-5 phrases, ~100 mots max)
+   - imageKeyword: 2-3 mots anglais pour l'image (ex: "brain neurons", "coffee beans")
+
+2. TESTS VARIÉS (${quizCount} questions de TYPES DIFFÉRENTS) :
+   OBLIGATOIRE - Utilise ces types dans l'ordre :
    
-   Les sections doivent couvrir le sujet de manière progressive et complète.
-
-2. QUIZ FINAL (type: "quiz") - ${quizQuestions} questions
-   Questions pour valider les connaissances acquises dans le cours.
+   a) "quiz" (QCM) - 2 questions minimum :
+      { "type": "quiz", "question": "...", "options": ["A", "B", "C", "D"], "correctIndex": 0 }
+   
+   b) "open-question" (réponse argumentée) - 1 question :
+      { "type": "open-question", "question": "...", "expectedAnswer": "Réponse type attendue en 2-3 phrases" }
+   
+   c) "flashcard" (carte mémoire) - 1 carte :
+      { "type": "flashcard", "question": "Concept clé à retenir", "answer": "Définition ou explication" }
+   
+   d) "slider" (estimation) - 1 question si pertinent :
+      { "type": "slider", "question": "Quelle estimation pour...?", "sliderConfig": { "min": 0, "max": 100, "correct": 42, "unit": "%" } }
 
 IMPORTANT :
-- Le cours doit être RICHE et DÉTAILLÉ, pas des résumés courts
-- Utilise des exemples concrets, des chiffres, des faits intéressants
-- Les transitions entre sections doivent être fluides
-- Chaque section doit approfondir un aspect différent du sujet
-- Les imageKeyword doivent être simples : "sunset ocean", "brain neurons", "coffee beans"`;
+- Chaque slide = 1 concept = contenu COURT et PRÉCIS
+- Les slides sont SÉPARÉES, pas un long texte
+- Utilise TOUS les types de tests demandés
+- Les imageKeyword doivent être simples et en anglais`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -248,7 +146,7 @@ IMPORTANT :
             type: 'function',
             function: {
               name: 'create_course',
-              description: 'Crée un cours éducatif structuré comme un document PDF',
+              description: 'Crée un cours éducatif structuré en slides avec tests variés',
               parameters: {
                 type: 'object',
                 properties: {
@@ -270,21 +168,21 @@ IMPORTANT :
                   },
                   lessonSections: {
                     type: 'array',
-                    description: 'Les sections du cours principal',
+                    description: 'Les slides du cours (1 concept par slide)',
                     items: {
                       type: 'object',
                       properties: {
                         title: {
                           type: 'string',
-                          description: 'Titre de la section'
+                          description: 'Titre court de la slide (max 50 caractères)'
                         },
                         content: {
                           type: 'string',
-                          description: 'Contenu détaillé de la section (2-3 paragraphes, chaque paragraphe séparé par deux retours à la ligne)'
+                          description: 'Contenu concis de la slide (3-5 phrases, ~100 mots max)'
                         },
                         imageKeyword: {
                           type: 'string',
-                          description: 'Mot-clé simple pour rechercher une image (2-3 mots en anglais)'
+                          description: 'Mot-clé simple pour image (2-3 mots en anglais)'
                         }
                       },
                       required: ['title', 'content', 'imageKeyword']
@@ -292,25 +190,48 @@ IMPORTANT :
                   },
                   quizQuestions: {
                     type: 'array',
-                    description: 'Questions de quiz pour valider les connaissances',
+                    description: 'Questions de test de types variés',
                     items: {
                       type: 'object',
                       properties: {
+                        type: {
+                          type: 'string',
+                          enum: ['quiz', 'open-question', 'flashcard', 'slider'],
+                          description: 'Type de question'
+                        },
                         question: {
                           type: 'string',
-                          description: 'La question du quiz'
+                          description: 'La question ou le concept'
                         },
                         options: {
                           type: 'array',
                           items: { type: 'string' },
-                          description: '4 options de réponse'
+                          description: 'Options pour QCM (4 choix)'
                         },
                         correctIndex: {
                           type: 'number',
-                          description: 'Index de la bonne réponse (0-3)'
+                          description: 'Index de la bonne réponse pour QCM (0-3)'
+                        },
+                        answer: {
+                          type: 'string',
+                          description: 'Réponse pour flashcard'
+                        },
+                        expectedAnswer: {
+                          type: 'string',
+                          description: 'Réponse attendue pour question ouverte'
+                        },
+                        sliderConfig: {
+                          type: 'object',
+                          properties: {
+                            min: { type: 'number' },
+                            max: { type: 'number' },
+                            correct: { type: 'number' },
+                            unit: { type: 'string' }
+                          },
+                          description: 'Configuration pour slider'
                         }
                       },
-                      required: ['question', 'options', 'correctIndex']
+                      required: ['type', 'question']
                     }
                   }
                 },
@@ -370,7 +291,6 @@ IMPORTANT :
       if (messageContent) {
         console.log('Attempting to parse from message content');
         try {
-          // Try to find JSON in the content
           const jsonMatch = messageContent.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
             courseData = JSON.parse(jsonMatch[0]);
@@ -382,10 +302,9 @@ IMPORTANT :
       }
     }
     
-    // If still no course data, create a basic course structure
+    // If still no course data, try a simpler request
     if (!courseData || !courseData.lessonSections) {
       console.log('Creating fallback course structure');
-      // Try one more time with a simpler request without tools
       const fallbackResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -407,10 +326,12 @@ RÉPONDS UNIQUEMENT avec un JSON valide dans ce format exact, sans aucun texte a
   "category": "Catégorie",
   "icon": "📚",
   "lessonSections": [
-    {"title": "Section 1", "content": "Contenu détaillé...", "imageKeyword": "keyword"}
+    {"title": "Section 1", "content": "Contenu court...", "imageKeyword": "keyword"}
   ],
   "quizQuestions": [
-    {"question": "Question?", "options": ["A", "B", "C", "D"], "correctIndex": 0}
+    {"type": "quiz", "question": "Question?", "options": ["A", "B", "C", "D"], "correctIndex": 0},
+    {"type": "open-question", "question": "Question ouverte?", "expectedAnswer": "Réponse attendue"},
+    {"type": "flashcard", "question": "Concept", "answer": "Définition"}
   ]
 }`
             }
@@ -438,52 +359,93 @@ RÉPONDS UNIQUEMENT avec un JSON valide dans ce format exact, sans aucun texte a
     if (!courseData || !courseData.lessonSections) {
       throw new Error('Impossible de générer le cours. Veuillez réessayer.');
     }
-    
-    // Search for images and resources in parallel
-    console.log('Searching images and resources via Perplexity...');
-    
-    const imagePromises = courseData.lessonSections.map((section: any) => 
-      searchWebImage(section.imageKeyword || section.title, PERPLEXITY_API_KEY)
-    );
-    const resourcesPromise = searchResources(theme, PERPLEXITY_API_KEY);
-    
-    const [images, resources] = await Promise.all([
-      Promise.all(imagePromises),
-      resourcesPromise
-    ]);
 
-    // Build the lesson sections with web images
-    const sections = courseData.lessonSections.map((section: any, index: number) => ({
-      id: `section-${index}`,
-      title: section.title,
-      content: section.content,
-      imageKeyword: section.imageKeyword,
-      imageUrl: images[index] || null
-    }));
+    // Build the cards array - EACH SECTION IS A SEPARATE CARD (SLIDE)
+    const cards: any[] = [];
 
-    // Build the cards array
-    const cards = [
-      // Main lesson card with all sections and resources
-      {
-        type: 'lesson',
-        title: courseData.title,
-        content: courseData.description,
-        sections: sections,
-        resources: resources,
-        xpReward: 50
-      },
-      // Quiz cards
-      ...courseData.quizQuestions.map((quiz: any, index: number) => ({
-        type: 'quiz',
-        title: `Quiz - Question ${index + 1}`,
-        content: quiz.question,
-        options: quiz.options,
-        correctIndex: quiz.correctIndex,
-        xpReward: 25
-      }))
-    ];
+    // Each section becomes a separate "info" card (slide)
+    courseData.lessonSections.forEach((section: any, index: number) => {
+      const imageUrl = getThemedImage(section.imageKeyword || theme, index);
+      cards.push({
+        type: 'info',
+        title: section.title,
+        content: section.content,
+        image_url: imageUrl,
+        xpReward: 15
+      });
+    });
+
+    // Add varied question types
+    courseData.quizQuestions.forEach((quiz: any, index: number) => {
+      const questionType = quiz.type || 'quiz';
+      
+      switch (questionType) {
+        case 'quiz':
+          cards.push({
+            type: 'quiz',
+            title: `Question ${index + 1}`,
+            content: quiz.question,
+            options: quiz.options?.map((opt: string, i: number) => ({
+              id: `opt-${index}-${i}`,
+              text: opt,
+              isCorrect: i === quiz.correctIndex
+            })) || [],
+            xpReward: 25
+          });
+          break;
+          
+        case 'open-question':
+          cards.push({
+            type: 'open-question',
+            title: `Réflexion ${index + 1}`,
+            content: quiz.question,
+            expectedAnswer: quiz.expectedAnswer || quiz.answer || '',
+            xpReward: 30
+          });
+          break;
+          
+        case 'flashcard':
+          cards.push({
+            type: 'flashcard',
+            title: `Mémorisation ${index + 1}`,
+            content: quiz.question,
+            flashcard_back: quiz.answer || quiz.expectedAnswer || '',
+            xpReward: 20
+          });
+          break;
+          
+        case 'slider':
+          cards.push({
+            type: 'slider',
+            title: `Estimation ${index + 1}`,
+            content: quiz.question,
+            slider_config: quiz.sliderConfig || { min: 0, max: 100, correct: 50, unit: '%' },
+            xpReward: 20
+          });
+          break;
+          
+        default:
+          // Fallback to quiz type
+          cards.push({
+            type: 'quiz',
+            title: `Question ${index + 1}`,
+            content: quiz.question,
+            options: quiz.options?.map((opt: string, i: number) => ({
+              id: `opt-${index}-${i}`,
+              text: opt,
+              isCorrect: i === quiz.correctIndex
+            })) || [],
+            xpReward: 25
+          });
+      }
+    });
 
     const totalXP = cards.reduce((sum: number, card: any) => sum + (card.xpReward || 0), 0);
+
+    // Calculate optimal duration based on card count
+    const totalCards = cards.length;
+    const cardsPerDay = Math.max(2, Math.ceil(dailyMinutes / 3)); // ~3 min per card
+    const durationDays = Math.max(1, Math.ceil(totalCards / cardsPerDay));
 
     const result = {
       title: courseData.title,
@@ -493,10 +455,12 @@ RÉPONDS UNIQUEMENT avec un JSON valide dans ce format exact, sans aucun texte a
       level: level,
       estimated_minutes: dailyMinutes,
       total_xp: totalXP,
+      duration_days: durationDays,
+      daily_cards_count: cardsPerDay,
       cards: cards
     };
 
-    console.log(`Course generated: "${result.title}" with ${sections.length} sections, ${courseData.quizQuestions.length} quiz questions, and resources`);
+    console.log(`Course generated: "${result.title}" with ${cards.length} cards (${courseData.lessonSections.length} slides, ${courseData.quizQuestions.length} questions), duration: ${durationDays} days`);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

@@ -10,23 +10,19 @@ const corsHeaders = {
 const POC_USER_ID = "00000000-0000-0000-0000-000000000001";
 
 interface CourseCard {
-  id: string;
   type: string;
   title: string;
   content: string;
-  options?: Array<{ id: string; text: string; isCorrect: boolean }>;
-  flashcardBack?: string;
-  sliderConfig?: {
+  options?: Array<{ id: string; text: string; isCorrect: boolean }> | string[];
+  image_url?: string;
+  flashcard_back?: string;
+  expectedAnswer?: string;
+  slider_config?: {
     min: number;
     max: number;
     correct: number;
     unit: string;
   };
-  sections?: Array<{
-    title: string;
-    content: string;
-    image_url?: string;
-  }>;
   xpReward: number;
 }
 
@@ -36,15 +32,14 @@ interface GeneratedCourse {
   category: string;
   icon: string;
   level: string;
-  estimatedMinutes: number;
-  totalXP: number;
-  durationDays?: number;
-  dailyCardsCount?: number;
+  estimated_minutes: number;
+  total_xp: number;
+  duration_days?: number;
+  daily_cards_count?: number;
   cards: CourseCard[];
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -62,9 +57,17 @@ serve(async (req) => {
     }
 
     console.log(`Saving course: ${course.title}`);
+    console.log(`Cards: ${course.cards.length}`);
 
-    const durationDays = course.durationDays || 1;
-    const dailyCardsCount = course.dailyCardsCount || Math.ceil(course.cards.length / durationDays);
+    // Calculate optimal duration based on card count
+    const totalCards = course.cards.length;
+    const estimatedMinutes = course.estimated_minutes || 10;
+    
+    // ~2-3 minutes per card, calculate how many cards fit in daily time
+    const cardsPerDay = course.daily_cards_count || Math.max(2, Math.ceil(estimatedMinutes / 3));
+    const durationDays = course.duration_days || Math.max(1, Math.ceil(totalCards / cardsPerDay));
+    
+    console.log(`Calculated: ${cardsPerDay} cards/day, ${durationDays} days total`);
 
     // 1. Insert the course
     const { data: courseData, error: courseError } = await supabase
@@ -76,11 +79,11 @@ serve(async (req) => {
         category: course.category || 'Général',
         icon: course.icon || '📚',
         level: ['beginner', 'intermediate', 'expert'].includes(course.level) ? course.level : 'beginner',
-        estimated_minutes: course.estimatedMinutes || 10,
-        total_xp: course.totalXP || 0,
+        estimated_minutes: estimatedMinutes,
+        total_xp: course.total_xp || 0,
         is_published: false,
         duration_days: durationDays,
-        daily_cards_count: dailyCardsCount,
+        daily_cards_count: cardsPerDay,
       })
       .select()
       .single();
@@ -92,15 +95,20 @@ serve(async (req) => {
 
     console.log(`Course created with ID: ${courseData.id}`);
 
-    // 2. Insert all cards
+    // 2. Insert all cards with proper format
     const cardsToInsert = course.cards.map((card, index) => {
-      // Convert options array to the format expected by DB
-      let options = null;
-      let correctIndex = null;
-
+      // Handle options - can be array of objects or array of strings
+      let optionsData = null;
       if (card.options && Array.isArray(card.options)) {
-        options = card.options.map(opt => opt.text || opt);
-        correctIndex = card.options.findIndex(opt => opt.isCorrect);
+        if (typeof card.options[0] === 'string') {
+          // Already string array from new generation
+          optionsData = { options: card.options };
+        } else {
+          // Object array with isCorrect
+          const options = card.options.map((opt: any) => opt.text || opt);
+          const correctIndex = card.options.findIndex((opt: any) => opt.isCorrect);
+          optionsData = { options, correctIndex };
+        }
       }
 
       return {
@@ -108,10 +116,11 @@ serve(async (req) => {
         order_index: index,
         type: card.type,
         title: card.title,
-        content: card.content || (card.sections ? JSON.stringify(card.sections) : ''),
-        options: options ? { options, correctIndex } : null,
-        flashcard_back: card.flashcardBack || null,
-        slider_config: card.sliderConfig || null,
+        content: card.content || '',
+        options: optionsData,
+        image_url: card.image_url || null,
+        flashcard_back: card.flashcard_back || card.expectedAnswer || null,
+        slider_config: card.slider_config || null,
         xp_reward: card.xpReward || 10,
       };
     });
@@ -122,40 +131,38 @@ serve(async (req) => {
 
     if (cardsError) {
       console.error('Error inserting cards:', cardsError);
-      // Rollback: delete the course if cards failed
       await supabase.from('courses').delete().eq('id', courseData.id);
       throw cardsError;
     }
 
     console.log(`${cardsToInsert.length} cards inserted successfully`);
 
-    // 3. Create sessions for the course
-    const totalCards = cardsToInsert.length;
+    // 3. Create sessions with proper card distribution
     const sessionsToCreate = [];
     const today = new Date();
+    let currentCardIndex = 0;
 
     for (let day = 0; day < durationDays; day++) {
+      const startIndex = currentCardIndex;
+      const endIndex = Math.min(currentCardIndex + cardsPerDay - 1, totalCards - 1);
+      
+      if (startIndex > totalCards - 1) break;
+
       const sessionDate = new Date(today);
-      sessionDate.setDate(sessionDate.getDate() + day);
+      sessionDate.setDate(today.getDate() + day);
 
-      const startIndex = day * dailyCardsCount;
-      const endIndex = Math.min((day + 1) * dailyCardsCount - 1, totalCards - 1);
+      sessionsToCreate.push({
+        user_id: POC_USER_ID,
+        course_id: courseData.id,
+        scheduled_date: sessionDate.toISOString().split('T')[0],
+        session_number: day + 1,
+        cards_start_index: startIndex,
+        cards_end_index: endIndex,
+        is_completed: false,
+        earned_xp: 0,
+      });
 
-      // Only create session if there are cards for this day
-      if (startIndex < totalCards) {
-        sessionsToCreate.push({
-          user_id: POC_USER_ID,
-          course_id: courseData.id,
-          scheduled_date: sessionDate.toISOString().split('T')[0],
-          session_number: day + 1,
-          cards_start_index: startIndex,
-          cards_end_index: endIndex,
-          is_completed: false,
-          earned_xp: 0,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
-      }
+      currentCardIndex = endIndex + 1;
     }
 
     if (sessionsToCreate.length > 0) {
@@ -165,7 +172,6 @@ serve(async (req) => {
 
       if (sessionsError) {
         console.error('Error creating sessions:', sessionsError);
-        // Don't rollback - course is still usable without sessions
       } else {
         console.log(`${sessionsToCreate.length} sessions created successfully`);
       }
@@ -175,7 +181,9 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         courseId: courseData.id,
+        cardsCount: cardsToInsert.length,
         sessionsCreated: sessionsToCreate.length,
+        cardsPerDay: cardsPerDay,
         message: `Course "${course.title}" saved with ${cardsToInsert.length} cards and ${sessionsToCreate.length} sessions`
       }),
       { 

@@ -6,18 +6,25 @@ interface InfoCardProps {
 }
 
 const InfoCard = ({ card }: InfoCardProps) => {
+  // Support both 'image' and 'image_url' properties
+  const imageUrl = card.image || (card as any).image_url;
+  
   return (
     <div className="flex-1 flex flex-col">
-      {card.image && (
+      {imageUrl && (
         <motion.div
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           className="relative aspect-video rounded-2xl overflow-hidden mb-6 shadow-elevated"
         >
           <img
-            src={card.image}
+            src={imageUrl}
             alt={card.title}
             className="w-full h-full object-cover"
+            onError={(e) => {
+              // Hide image if it fails to load
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
         </motion.div>
@@ -30,7 +37,7 @@ const InfoCard = ({ card }: InfoCardProps) => {
         className="flex-1"
       >
         <h2 className="text-2xl font-bold text-foreground mb-4">{card.title}</h2>
-        <p className="text-lg text-muted-foreground leading-relaxed">{card.content}</p>
+        <p className="text-lg text-muted-foreground leading-relaxed whitespace-pre-line">{card.content}</p>
       </motion.div>
 
       <motion.div
