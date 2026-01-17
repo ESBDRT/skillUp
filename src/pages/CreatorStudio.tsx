@@ -78,7 +78,7 @@ export default function CreatorStudio() {
   const [cards, setCards] = useState<CourseCard[]>([]);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
 
-  const handleAIGenerate = async (theme: string, minutes: number, level: 'beginner' | 'intermediate' | 'expert') => {
+  const handleAIGenerate = async (theme: string, minutes: number, level: 'beginner' | 'intermediate' | 'expert', knownKeywords?: string[]) => {
     setIsGenerating(true);
     setMode('ai');
 
@@ -89,7 +89,7 @@ export default function CreatorStudio() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ theme, dailyMinutes: minutes, level }),
+        body: JSON.stringify({ theme, dailyMinutes: minutes, level, knownKeywords }),
       });
 
       if (!response.ok) {

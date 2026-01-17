@@ -9,6 +9,7 @@ interface GenerateCourseRequest {
   theme: string;
   dailyMinutes: number;
   level: 'beginner' | 'intermediate' | 'expert';
+  knownKeywords?: string[];
 }
 
 const levelInstructions = {
@@ -166,9 +167,9 @@ serve(async (req) => {
   }
 
   try {
-    const { theme, dailyMinutes, level }: GenerateCourseRequest = await req.json();
+    const { theme, dailyMinutes, level, knownKeywords }: GenerateCourseRequest = await req.json();
     
-    console.log(`Generating course: theme="${theme}", minutes=${dailyMinutes}, level=${level}`);
+    console.log(`Generating course: theme="${theme}", minutes=${dailyMinutes}, level=${level}, knownKeywords=${knownKeywords?.length || 0}`);
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const PERPLEXITY_API_KEY = Deno.env.get('perplexity');
@@ -185,10 +186,19 @@ serve(async (req) => {
     const sectionCount = dailyMinutes <= 5 ? 3 : dailyMinutes <= 10 ? 4 : dailyMinutes <= 15 ? 5 : 6;
     const quizQuestions = Math.max(2, Math.floor(dailyMinutes / 5));
 
+    const knownConceptsInstruction = knownKeywords && knownKeywords.length > 0
+      ? `\n\nIMPORTANT - ADAPTATION AU NIVEAU DE L'APPRENANT :
+L'apprenant a indiqué qu'il connaît déjà ces concepts : ${knownKeywords.join(', ')}.
+- NE PAS répéter les bases de ces concepts, l'apprenant les maîtrise déjà
+- Mentionner brièvement ces concepts si nécessaire, mais aller plus loin
+- Se concentrer sur les aspects avancés et les connexions avec d'autres concepts
+- Proposer des nuances et des approfondissements sur ces sujets`
+      : '';
+
     const systemPrompt = `Tu es un expert pédagogue qui crée des cours éducatifs de haute qualité, similaires à des documents PDF professionnels.
 
 Niveau de difficulté : ${levelNames[level]}
-${levelInstructions[level]}
+${levelInstructions[level]}${knownConceptsInstruction}
 
 Tu dois créer un VRAI COURS structuré comme un document professionnel :
 - Titre principal du cours
