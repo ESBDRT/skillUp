@@ -477,20 +477,27 @@ RÉPONDS UNIQUEMENT avec un JSON valide dans ce format exact, sans aucun texte a
           });
         }
       } else if (questionType === 'flashcard') {
-        cards.push({
-          type: 'flashcard',
-          title: `Mémorisation ${index + 1}`,
-          content: quiz.question,
-          flashcard_back: quiz.answer || '',
-          xpReward: 20
-        });
+        // Ensure flashcard has valid back content
+        const backContent = quiz.answer || quiz.expectedAnswer || quiz.question || '';
+        if (backContent && backContent.trim().length >= 3) {
+          cards.push({
+            type: 'flashcard',
+            title: `Mémorisation ${index + 1}`,
+            content: quiz.question,
+            flashcard_back: backContent,
+            xpReward: 20
+          });
+        } else {
+          console.log(`Skipping flashcard ${index + 1} without valid answer`);
+        }
       } else {
-        // Convert any other type to flashcard
+        // Convert any other type to flashcard with validation
+        const backContent = quiz.answer || quiz.expectedAnswer || 'Concept clé à retenir';
         cards.push({
           type: 'flashcard',
           title: `Mémorisation ${index + 1}`,
           content: quiz.question,
-          flashcard_back: quiz.answer || quiz.expectedAnswer || 'Réponse à découvrir',
+          flashcard_back: backContent,
           xpReward: 20
         });
       }
