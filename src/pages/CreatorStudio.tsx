@@ -96,15 +96,16 @@ export default function CreatorStudio() {
         throw new Error(error.error || 'Erreur lors de la génération');
       }
 
-      const generatedCourse: GeneratedCourse = await response.json();
+      const generatedCourse = await response.json();
       
       // Convert cards to the format expected by CoursePlayer
-      const formattedCards = generatedCourse.cards.map((card, index) => ({
+      const formattedCards = generatedCourse.cards.map((card: any, index: number) => ({
         id: `card-${Date.now()}-${index}`,
         type: card.type,
         title: card.title,
         content: card.content,
-        options: card.options?.map((opt, i) => ({
+        sections: card.sections, // For lesson type cards
+        options: card.options?.map((opt: string, i: number) => ({
           id: `opt-${i}`,
           text: opt,
           isCorrect: i === card.correctIndex

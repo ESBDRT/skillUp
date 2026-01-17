@@ -1,8 +1,16 @@
 // Mock data for the micro-learning app
 
+export interface LessonSection {
+  id: string;
+  title: string;
+  content: string;
+  imagePrompt?: string;
+  imageUrl?: string;
+}
+
 export interface Card {
   id: string;
-  type: 'info' | 'quiz' | 'flashcard' | 'slider' | 'open-question';
+  type: 'info' | 'quiz' | 'flashcard' | 'slider' | 'open-question' | 'lesson';
   title?: string;
   content?: string;
   image?: string;
@@ -15,6 +23,8 @@ export interface Card {
     unit: string;
     description: string;
   };
+  // For lesson type cards (PDF-like course)
+  sections?: LessonSection[];
   xpReward: number;
 }
 
