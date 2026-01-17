@@ -30,53 +30,18 @@ const Landing = () => {
 
   return (
     <div className="min-h-screen bg-background overflow-hidden">
-      {/* Decorative background elements */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        {/* Animated gradient blobs - MORE VISIBLE */}
-        <div className="absolute top-0 left-1/4 w-[700px] h-[700px] bg-primary/15 rounded-full blur-[120px] animate-blob" />
-        <div className="absolute top-1/3 right-1/4 w-[600px] h-[600px] bg-purple-500/12 rounded-full blur-[100px] animate-blob animation-delay-2000" />
-        <div className="absolute bottom-1/4 left-1/3 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[80px] animate-blob animation-delay-4000" />
-        <div className="absolute top-1/2 right-1/3 w-[400px] h-[400px] bg-primary/10 rounded-full blur-[60px] animate-blob animation-delay-6000" />
+      {/* Depth background layers */}
+      <div className="fixed inset-0 pointer-events-none">
+        {/* Base gradient */}
+        <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-muted/30" />
         
-        {/* Floating particles - BIGGER AND BRIGHTER */}
-        <div className="absolute inset-0">
-          {/* Large drifting orbs */}
-          <div className="absolute top-1/4 left-[10%] w-4 h-4 rounded-full bg-primary/40 animate-drift shadow-lg shadow-primary/30" />
-          <div className="absolute top-1/2 right-[15%] w-5 h-5 rounded-full bg-purple-500/35 animate-drift animation-delay-2000 shadow-lg shadow-purple-500/20" />
-          <div className="absolute bottom-1/3 left-[20%] w-4 h-4 rounded-full bg-primary/30 animate-drift animation-delay-4000 shadow-lg shadow-primary/20" />
-          <div className="absolute top-[60%] right-[25%] w-3 h-3 rounded-full bg-emerald-500/35 animate-drift animation-delay-6000 shadow-lg shadow-emerald-500/20" />
-          <div className="absolute top-[20%] right-[40%] w-3 h-3 rounded-full bg-primary/35 animate-drift" />
-          <div className="absolute bottom-[40%] left-[40%] w-4 h-4 rounded-full bg-purple-500/30 animate-drift animation-delay-4000" />
-          
-          {/* Rising particles - MORE OF THEM */}
-          <div className="absolute bottom-0 left-[10%] w-2.5 h-2.5 rounded-full bg-primary/50 animate-float-up" style={{ animationDelay: '0s' }} />
-          <div className="absolute bottom-0 left-[25%] w-2 h-2 rounded-full bg-purple-500/45 animate-float-up" style={{ animationDelay: '3s' }} />
-          <div className="absolute bottom-0 left-[40%] w-2.5 h-2.5 rounded-full bg-primary/40 animate-float-up" style={{ animationDelay: '6s' }} />
-          <div className="absolute bottom-0 left-[55%] w-2 h-2 rounded-full bg-emerald-500/40 animate-float-up" style={{ animationDelay: '9s' }} />
-          <div className="absolute bottom-0 left-[70%] w-2.5 h-2.5 rounded-full bg-purple-500/45 animate-float-up" style={{ animationDelay: '12s' }} />
-          <div className="absolute bottom-0 left-[85%] w-2 h-2 rounded-full bg-primary/40 animate-float-up" style={{ animationDelay: '15s' }} />
-        </div>
+        {/* Layered depth gradients */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,hsl(var(--primary)/0.08),transparent)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_60%,hsl(270_75%_60%/0.05),transparent)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_30%_at_20%_80%,hsl(var(--primary)/0.06),transparent)]" />
         
-        {/* Moving lines - BRIGHTER */}
-        <div className="absolute inset-0">
-          {/* Horizontal flowing lines */}
-          <div className="absolute top-[20%] left-0 w-[300px] h-0.5 bg-gradient-to-r from-transparent via-primary/40 to-transparent animate-line-h" style={{ animationDelay: '0s' }} />
-          <div className="absolute top-[45%] left-0 w-[400px] h-0.5 bg-gradient-to-r from-transparent via-purple-500/35 to-transparent animate-line-h" style={{ animationDelay: '4s' }} />
-          <div className="absolute top-[70%] left-0 w-[350px] h-0.5 bg-gradient-to-r from-transparent via-primary/35 to-transparent animate-line-h" style={{ animationDelay: '8s' }} />
-          
-          {/* Vertical flowing lines */}
-          <div className="absolute top-0 left-[25%] w-0.5 h-[200px] bg-gradient-to-b from-transparent via-primary/35 to-transparent animate-line-v" style={{ animationDelay: '2s' }} />
-          <div className="absolute top-0 left-[60%] w-0.5 h-[250px] bg-gradient-to-b from-transparent via-purple-500/30 to-transparent animate-line-v" style={{ animationDelay: '6s' }} />
-          <div className="absolute top-0 left-[85%] w-0.5 h-[220px] bg-gradient-to-b from-transparent via-primary/30 to-transparent animate-line-v" style={{ animationDelay: '10s' }} />
-          
-          {/* Pulsing accent lines */}
-          <div className="absolute top-[35%] left-[10%] w-[150px] h-0.5 bg-gradient-to-r from-primary/50 to-transparent animate-line-pulse origin-left" />
-          <div className="absolute top-[55%] right-[10%] w-[180px] h-0.5 bg-gradient-to-l from-purple-500/40 to-transparent animate-line-pulse origin-right animation-delay-2000" />
-          <div className="absolute top-[80%] left-[30%] w-[120px] h-0.5 bg-gradient-to-r from-primary/35 to-transparent animate-line-pulse origin-left animation-delay-4000" />
-        </div>
-        
-        {/* Grid pattern overlay */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--primary)/0.03)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--primary)/0.03)_1px,transparent_1px)] bg-[size:60px_60px]" />
+        {/* Subtle vignette for depth */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,hsl(var(--background)/0.4)_100%)]" />
       </div>
 
       {/* Header */}
@@ -393,24 +358,11 @@ const Landing = () => {
 
       {/* CTA Section */}
       <section className="relative py-32 px-6 overflow-hidden">
-        {/* Enhanced gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/15 via-purple-500/10 to-primary/15" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(var(--primary)/0.2)_0%,transparent_60%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,hsl(270_75%_60%/0.15)_0%,transparent_50%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,hsl(var(--primary)/0.15)_0%,transparent_50%)]" />
-        
-        {/* Animated decorative elements */}
-        <div className="absolute top-1/4 left-1/4 w-48 h-48 bg-primary/20 rounded-full blur-3xl animate-blob" />
-        <div className="absolute bottom-1/4 right-1/4 w-40 h-40 bg-purple-500/20 rounded-full blur-3xl animate-blob animation-delay-2000" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/10 rounded-full blur-[100px] animate-pulse" />
-        
-        {/* Floating particles */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-20 left-[10%] w-3 h-3 rounded-full bg-primary/40 animate-float" />
-          <div className="absolute top-40 right-[15%] w-2 h-2 rounded-full bg-purple-500/40 animate-float animation-delay-2000" />
-          <div className="absolute bottom-32 left-[20%] w-4 h-4 rounded-full bg-primary/30 animate-float animation-delay-4000" />
-          <div className="absolute bottom-20 right-[25%] w-2 h-2 rounded-full bg-purple-500/30 animate-float animation-delay-6000" />
-        </div>
+        {/* Depth background for CTA */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-muted/50 to-purple-500/10" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(var(--primary)/0.15)_0%,transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,hsl(270_75%_60%/0.08)_0%,transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,hsl(var(--primary)/0.08)_0%,transparent_50%)]" />
         
         <div className="max-w-4xl mx-auto text-center relative z-10">
           <AnimatePresence mode="wait">
