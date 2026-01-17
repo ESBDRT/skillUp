@@ -10,6 +10,7 @@ import QuizCard from '@/components/cards/QuizCard';
 import FlashCard from '@/components/cards/FlashCard';
 import SliderCard from '@/components/cards/SliderCard';
 import OpenQuestionCard from '@/components/cards/OpenQuestionCard';
+import LessonCard from '@/components/cards/LessonCard';
 import VictoryScreen from '@/components/VictoryScreen';
 import XPPopup from '@/components/XPPopup';
 import { X, Volume2, MessageCircle } from 'lucide-react';
@@ -137,6 +138,8 @@ const CoursePlayer = () => {
         return <SliderCard card={currentCard} onComplete={handleCardComplete} />;
       case 'open-question':
         return <OpenQuestionCard card={currentCard} onComplete={handleCardComplete} />;
+      case 'lesson':
+        return <LessonCard card={currentCard} onComplete={handleCardComplete} />;
       default:
         return <InfoCard card={currentCard} />;
     }
