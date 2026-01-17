@@ -6,6 +6,8 @@ import { mockLessons, Lesson } from '@/data/mockData';
 import { useUser } from '@/context/UserContext';
 import { supabase } from '@/integrations/supabase/client';
 import { POC_USER_ID } from '@/lib/constants';
+import { useCourseSessions } from '@/hooks/useCourseSessions';
+import { useMemoryConcepts } from '@/hooks/useMemoryConcepts';
 import StoryProgress from '@/components/StoryProgress';
 import InfoCard from '@/components/cards/InfoCard';
 import QuizCard from '@/components/cards/QuizCard';
@@ -24,10 +26,17 @@ const CoursePlayer = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { addXP, completeLesson, addMinutes, user } = useUser();
+  const { completeSession } = useCourseSessions();
+  const { addConcept } = useMemoryConcepts();
   
   // Check if we have a generated course from state or resuming
   const generatedCourse = location.state?.generatedCourse;
   const resumedProgress = location.state?.resumedProgress;
+  
+  // Session-specific state from navigation
+  const sessionId = location.state?.sessionId;
+  const cardsStartIndex = location.state?.cardsStartIndex ?? 0;
+  const cardsEndIndex = location.state?.cardsEndIndex;
   
   // Use generated course if available, otherwise find from mock data
   const lesson: Lesson | undefined = generatedCourse 
@@ -45,6 +54,13 @@ const CoursePlayer = () => {
         isLocked: false,
       }
     : mockLessons.find(l => l.id === courseId);
+  
+  // Filter cards for session if session indices are provided
+  const sessionCards = lesson?.cards 
+    ? (cardsEndIndex !== undefined 
+        ? lesson.cards.slice(cardsStartIndex, cardsEndIndex + 1)
+        : lesson.cards)
+    : [];
     
   const [currentCardIndex, setCurrentCardIndex] = useState(resumedProgress?.current_card_index || 0);
   const [earnedXP, setEarnedXP] = useState(resumedProgress?.earned_xp || 0);
@@ -58,6 +74,7 @@ const CoursePlayer = () => {
   const [progressId, setProgressId] = useState<string | null>(resumedProgress?.id || null);
   
   const isPreview = !!generatedCourse;
+  const isSessionMode = !!sessionId;
 
   // Auto-save progress periodically
   useEffect(() => {
@@ -136,20 +153,36 @@ const CoursePlayer = () => {
     );
   }
 
-  const currentCard = lesson.cards[currentCardIndex];
-  const progress = ((currentCardIndex + 1) / lesson.cards.length) * 100;
+  // Use session cards if in session mode, otherwise use all cards
+  const cardsToPlay = isSessionMode ? sessionCards : lesson.cards;
+  const currentCard = cardsToPlay[currentCardIndex];
+  const progress = ((currentCardIndex + 1) / cardsToPlay.length) * 100;
 
   // Get text content for audio
   const getCardTextContent = () => {
-    let text = currentCard.title || '';
-    if (currentCard.content) {
+    let text = currentCard?.title || '';
+    if (currentCard?.content) {
       text += '. ' + currentCard.content;
     }
-    if (currentCard.type === 'flashcard' && currentCard.flashcardBack) {
+    if (currentCard?.type === 'flashcard' && currentCard.flashcardBack) {
       text += '. ' + currentCard.flashcardBack;
     }
     return text;
   };
+
+  // Add concept to memory after completing a card
+  const saveConceptToMemory = useCallback(async (card: typeof currentCard) => {
+    if (!card || !courseId) return;
+    
+    // Only save info, lesson, and flashcard cards as concepts
+    if (['info', 'lesson', 'flashcard'].includes(card.type)) {
+      try {
+        await addConcept(courseId, card.title, card.content);
+      } catch (error) {
+        console.error('Error saving concept:', error);
+      }
+    }
+  }, [courseId, addConcept]);
 
   const handleXPGain = useCallback((amount: number) => {
     setXpAmount(amount);
@@ -157,19 +190,32 @@ const CoursePlayer = () => {
     setEarnedXP(prev => prev + amount);
     setCompletedCards(prev => new Set([...prev, currentCardIndex]));
     addXP(amount);
+    
+    // Save concept to memory
+    saveConceptToMemory(currentCard);
+    
     setTimeout(() => setShowXPPopup(false), 1500);
-  }, [addXP, currentCardIndex]);
+  }, [addXP, currentCardIndex, currentCard, saveConceptToMemory]);
 
-  const handleNext = useCallback(() => {
-    if (currentCardIndex < lesson.cards.length - 1) {
+  const handleNext = useCallback(async () => {
+    if (currentCardIndex < cardsToPlay.length - 1) {
       setCurrentCardIndex(prev => prev + 1);
     } else {
-      // Course complete!
+      // Session/Course complete!
       setIsComplete(true);
       completeLesson(lesson.id);
       addMinutes(lesson.estimatedMinutes);
       
-      // Mark as complete in database
+      // Mark session as complete if in session mode
+      if (isSessionMode && sessionId) {
+        try {
+          await completeSession(sessionId, earnedXP);
+        } catch (error) {
+          console.error('Error completing session:', error);
+        }
+      }
+      
+      // Mark as complete in database (for full course progress)
       if (progressId) {
         supabase
           .from('course_progress')
@@ -186,7 +232,7 @@ const CoursePlayer = () => {
         colors: ['#4F46E5', '#10B981', '#F59E0B'],
       });
     }
-  }, [currentCardIndex, lesson, completeLesson, addMinutes, progressId]);
+  }, [currentCardIndex, cardsToPlay.length, lesson, completeLesson, addMinutes, progressId, isSessionMode, sessionId, earnedXP, completeSession]);
 
   const handlePrev = useCallback(() => {
     if (currentCardIndex > 0) {
@@ -260,7 +306,7 @@ const CoursePlayer = () => {
           
           <StoryProgress 
             current={currentCardIndex} 
-            total={lesson.cards.length} 
+            total={cardsToPlay.length} 
           />
 
           {/* Save button for generated courses */}

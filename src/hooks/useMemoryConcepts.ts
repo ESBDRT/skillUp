@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { POC_USER_ID } from '@/lib/constants';
 
 export interface MemoryConcept {
   id: string;
@@ -68,7 +69,7 @@ export const useMemoryConcepts = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const userId = localStorage.getItem('odemon_user_id');
+  const userId = POC_USER_ID;
 
   const fetchConcepts = useCallback(async () => {
     if (!userId) {
