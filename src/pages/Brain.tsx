@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Brain as BrainIcon, Zap, RefreshCw, Trash2, Filter } from 'lucide-react';
+import { Brain as BrainIcon, Zap, RefreshCw, Trash2, Filter, ChevronDown, ChevronUp, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import BottomNav from '@/components/BottomNav';
 import MemoryHealthGauge from '@/components/MemoryHealthGauge';
+import MemoryStats from '@/components/MemoryStats';
 import ConceptCard from '@/components/ConceptCard';
 import { useMemoryConcepts } from '@/hooks/useMemoryConcepts';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -18,6 +19,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 
 type FilterType = 'all' | 'danger' | 'warning' | 'solid';
 
@@ -29,16 +35,52 @@ const Brain = () => {
     getAverageMemoryStrength,
     getAtRiskConcepts,
     getConceptsForReview,
+    getConceptsByCourse,
+    getWeeklyStats,
     deleteConcept,
     refetch,
   } = useMemoryConcepts();
 
   const [filter, setFilter] = useState<FilterType>('all');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [weeklyStats, setWeeklyStats] = useState({ totalReviews: 0, correctReviews: 0 });
+  const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<'flat' | 'grouped'>('grouped');
 
   const averageStrength = getAverageMemoryStrength();
   const atRiskCount = getAtRiskConcepts().length;
   const reviewCount = getConceptsForReview().length;
+  const conceptsByCourse = getConceptsByCourse();
+
+  // Fetch weekly stats
+  useEffect(() => {
+    if (!loading) {
+      getWeeklyStats().then(setWeeklyStats);
+    }
+  }, [loading, getWeeklyStats]);
+
+  // Auto-expand courses with at-risk concepts
+  useEffect(() => {
+    const coursesWithRisk = new Set<string>();
+    concepts.forEach(c => {
+      if (c.memory_strength < 50) {
+        coursesWithRisk.add(c.course_id);
+      }
+    });
+    setExpandedCourses(coursesWithRisk);
+  }, [concepts]);
+
+  const toggleCourse = (courseId: string) => {
+    setExpandedCourses(prev => {
+      const next = new Set(prev);
+      if (next.has(courseId)) {
+        next.delete(courseId);
+      } else {
+        next.add(courseId);
+      }
+      return next;
+    });
+  };
 
   const filteredConcepts = concepts.filter((concept) => {
     switch (filter) {
@@ -52,6 +94,21 @@ const Brain = () => {
         return true;
     }
   });
+
+  const filterConceptsInCourse = (courseConcepts: typeof concepts) => {
+    return courseConcepts.filter((concept) => {
+      switch (filter) {
+        case 'danger':
+          return concept.memory_strength < 40;
+        case 'warning':
+          return concept.memory_strength >= 40 && concept.memory_strength < 70;
+        case 'solid':
+          return concept.memory_strength >= 70;
+        default:
+          return true;
+      }
+    });
+  };
 
   const handleDelete = async () => {
     if (deleteConfirm) {
@@ -70,6 +127,12 @@ const Brain = () => {
     { key: 'warning', label: 'À revoir', color: 'bg-xp' },
     { key: 'solid', label: 'Solides', color: 'bg-success' },
   ];
+
+  const getCourseStats = (courseConcepts: typeof concepts) => {
+    const danger = courseConcepts.filter(c => c.memory_strength < 40).length;
+    const warning = courseConcepts.filter(c => c.memory_strength >= 40 && c.memory_strength < 70).length;
+    return { danger, warning, total: courseConcepts.length };
+  };
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -116,7 +179,12 @@ const Brain = () => {
           )}
         </motion.div>
 
-        {/* Stats Cards */}
+        {/* Stats Component */}
+        {!loading && concepts.length > 0 && (
+          <MemoryStats concepts={concepts} weeklyStats={weeklyStats} />
+        )}
+
+        {/* Quick Stats Cards */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -160,27 +228,39 @@ const Brain = () => {
           </motion.div>
         )}
 
-        {/* Filter Chips */}
+        {/* Filter Chips + View Toggle */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="flex items-center gap-2 overflow-x-auto pb-2"
+          className="space-y-3"
         >
-          <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
-          {filters.map((f) => (
-            <button
-              key={f.key}
-              onClick={() => setFilter(f.key)}
-              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-                filter === f.key
-                  ? `${f.color} text-white`
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 overflow-x-auto pb-2">
+              <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
+              {filters.map((f) => (
+                <button
+                  key={f.key}
+                  onClick={() => setFilter(f.key)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                    filter === f.key
+                      ? `${f.color} text-white`
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setViewMode(v => v === 'flat' ? 'grouped' : 'flat')}
+              className="shrink-0"
             >
-              {f.label}
-            </button>
-          ))}
+              <BookOpen className="w-4 h-4" />
+            </Button>
+          </div>
         </motion.div>
 
         {/* Concepts List */}
@@ -208,7 +288,78 @@ const Brain = () => {
                   : 'Aucun concept dans cette catégorie.'}
               </p>
             </motion.div>
+          ) : viewMode === 'grouped' ? (
+            // Grouped by course view
+            <div className="space-y-4">
+              {Object.entries(conceptsByCourse).map(([courseId, { courseTitle, concepts: courseConcepts }]) => {
+                const filtered = filterConceptsInCourse(courseConcepts);
+                if (filtered.length === 0) return null;
+                
+                const stats = getCourseStats(courseConcepts);
+                const isExpanded = expandedCourses.has(courseId);
+
+                return (
+                  <Collapsible
+                    key={courseId}
+                    open={isExpanded}
+                    onOpenChange={() => toggleCourse(courseId)}
+                  >
+                    <CollapsibleTrigger asChild>
+                      <motion.div
+                        layout
+                        className="bg-card border border-border rounded-xl p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                              <BookOpen className="w-5 h-5 text-primary" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-foreground">{courseTitle}</h3>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span>{filtered.length} concepts</span>
+                                {stats.danger > 0 && (
+                                  <span className="text-destructive">• {stats.danger} en danger</span>
+                                )}
+                                {stats.warning > 0 && (
+                                  <span className="text-xp">• {stats.warning} à revoir</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          {isExpanded ? (
+                            <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                          ) : (
+                            <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                          )}
+                        </div>
+                      </motion.div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <AnimatePresence mode="popLayout">
+                        <div className="pl-4 mt-2 space-y-2 border-l-2 border-primary/20">
+                          {filtered.map((concept) => (
+                            <ConceptCard
+                              key={concept.id}
+                              id={concept.id}
+                              title={concept.concept_title}
+                              content={concept.concept_content}
+                              memoryStrength={concept.memory_strength}
+                              lastReviewed={concept.last_reviewed_at}
+                              nextReview={concept.next_review_at}
+                              onDelete={(id) => setDeleteConfirm(id)}
+                              onReview={() => navigate('/smart-session')}
+                            />
+                          ))}
+                        </div>
+                      </AnimatePresence>
+                    </CollapsibleContent>
+                  </Collapsible>
+                );
+              })}
+            </div>
           ) : (
+            // Flat view
             <AnimatePresence mode="popLayout">
               {filteredConcepts.map((concept) => (
                 <ConceptCard
@@ -219,6 +370,7 @@ const Brain = () => {
                   memoryStrength={concept.memory_strength}
                   lastReviewed={concept.last_reviewed_at}
                   nextReview={concept.next_review_at}
+                  courseName={concept.course_title || undefined}
                   onDelete={(id) => setDeleteConfirm(id)}
                   onReview={() => navigate('/smart-session')}
                 />

@@ -215,6 +215,7 @@ export type Database = {
           concept_content: string | null
           concept_title: string
           course_id: string
+          course_title: string | null
           created_at: string | null
           ease_factor: number | null
           id: string
@@ -229,6 +230,7 @@ export type Database = {
           concept_content?: string | null
           concept_title: string
           course_id: string
+          course_title?: string | null
           created_at?: string | null
           ease_factor?: number | null
           id?: string
@@ -243,6 +245,7 @@ export type Database = {
           concept_content?: string | null
           concept_title?: string
           course_id?: string
+          course_title?: string | null
           created_at?: string | null
           ease_factor?: number | null
           id?: string
@@ -254,6 +257,38 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      memory_reviews: {
+        Row: {
+          concept_id: string
+          id: string
+          quality: number
+          reviewed_at: string | null
+          user_id: string
+        }
+        Insert: {
+          concept_id: string
+          id?: string
+          quality: number
+          reviewed_at?: string | null
+          user_id: string
+        }
+        Update: {
+          concept_id?: string
+          id?: string
+          quality?: number
+          reviewed_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memory_reviews_concept_id_fkey"
+            columns: ["concept_id"]
+            isOneToOne: false
+            referencedRelation: "memory_concepts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_profiles: {
         Row: {
