@@ -39,13 +39,11 @@ const levelNames = {
   expert: 'Expert'
 };
 
-// Fallback placeholder image
 function getFallbackImage(keyword: string): string {
   const cleanKeyword = encodeURIComponent(keyword.toLowerCase().replace(/[^a-z0-9\s]/g, '').substring(0, 30) || 'education');
   return `https://placehold.co/800x600/1a1a2e/eaeaea?text=${cleanKeyword}`;
 }
 
-// Generate image using AI or fallback
 async function generateImage(keyword: string, theme: string, supabaseUrl: string, supabaseKey: string): Promise<string> {
   try {
     console.log(`Generating image for keyword: ${keyword}`);
@@ -79,12 +77,12 @@ serve(async (req) => {
     
     console.log(`Generating course: theme="${theme}", minutes=${dailyMinutes}, level=${level}`);
 
-    const FEATHERLESS_API_KEY = Deno.env.get('API');
+    const FEATHERLESS_API_KEY = Deno.env.get('API2');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
     
     if (!FEATHERLESS_API_KEY) {
-      throw new Error('API key is not configured');
+      throw new Error('API2 key is not configured');
     }
 
     const hasPlan = coursePlan && coursePlan.days && coursePlan.days.length > 0;
@@ -133,6 +131,15 @@ Réponds UNIQUEMENT avec ce JSON :
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
+
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ 
+          error: 'Crédits insuffisants. Veuillez recharger votre compte.' 
+        }), {
+          status: 402,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
       
       throw new Error(`API error: ${response.status}`);
     }
@@ -144,7 +151,6 @@ Réponds UNIQUEMENT avec ce JSON :
 
     let courseData;
     
-    // Strategy 1: Direct JSON match
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       try {
@@ -155,7 +161,6 @@ Réponds UNIQUEMENT avec ce JSON :
       }
     }
     
-    // Strategy 2: Code block
     if (!courseData) {
       const codeBlockMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
       if (codeBlockMatch) {
@@ -168,7 +173,6 @@ Réponds UNIQUEMENT avec ce JSON :
       }
     }
     
-    // Fallback: Generate basic course with descriptive titles
     if (!courseData || !courseData.lessonSections) {
       console.log('Using fallback course structure');
       courseData = {
@@ -195,7 +199,6 @@ Réponds UNIQUEMENT avec ce JSON :
         ],
         quizQuestions: [
           {
-            type: 'quiz',
             question: `Quel est l'objectif principal de l'étude de ${theme} ?`,
             options: [
               'Comprendre les concepts fondamentaux et leurs applications',
@@ -206,7 +209,6 @@ Réponds UNIQUEMENT avec ce JSON :
             correctIndex: 0
           },
           {
-            type: 'quiz',
             question: `Quelle approche est recommandée pour bien apprendre ${theme} ?`,
             options: [
               'Partir des bases vers les concepts avancés progressivement',
@@ -217,7 +219,6 @@ Réponds UNIQUEMENT avec ce JSON :
             correctIndex: 0
           },
           {
-            type: 'quiz',
             question: `Pourquoi les applications pratiques sont-elles importantes dans l'apprentissage de ${theme} ?`,
             options: [
               'Elles aident à mieux retenir et utiliser les concepts',
@@ -231,23 +232,18 @@ Réponds UNIQUEMENT avec ce JSON :
       };
     }
 
-    // Limit sections
     const limitedSections = (courseData.lessonSections || []).slice(0, maxSlides);
     console.log(`Processing ${limitedSections.length} slides`);
 
-    // Build cards
     const cards: any[] = [];
 
-    // Generate images
     const imagePromises = limitedSections.map((section: any) => {
       const keyword = section.imageKeyword || section.title || theme;
       return generateImage(keyword, theme, SUPABASE_URL, SUPABASE_ANON_KEY);
     });
     const imageUrls = await Promise.all(imagePromises);
 
-    // Add info cards with descriptive titles
     limitedSections.forEach((section: any, index: number) => {
-      // Ensure title is descriptive, not generic
       let title = section.title || `Partie ${index + 1}: ${theme}`;
       if (title.toLowerCase().includes('slide')) {
         title = section.content?.substring(0, 50).split('.')[0] || `Concept ${index + 1} de ${theme}`;
@@ -262,10 +258,8 @@ Réponds UNIQUEMENT avec ce JSON :
       });
     });
 
-    // Add ONLY QCM quiz cards
     const limitedQuizzes = (courseData.quizQuestions || []).slice(0, quizCount);
     limitedQuizzes.forEach((quiz: any, index: number) => {
-      // Force all quizzes to be QCM type
       if (Array.isArray(quiz.options) && quiz.options.length >= 2) {
         const formattedOptions = quiz.options.map((opt: any, i: number) => ({
           id: `opt-${index}-${i}`,
@@ -281,7 +275,6 @@ Réponds UNIQUEMENT avec ce JSON :
           xpReward: 25
         });
       } else {
-        // Convert to QCM if not properly formatted
         cards.push({
           type: 'quiz',
           title: `Quiz ${index + 1}`,
