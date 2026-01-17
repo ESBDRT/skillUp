@@ -36,6 +36,25 @@ const Landing = () => {
         <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-purple-500/5 rounded-full blur-3xl animate-blob animation-delay-2000" />
         <div className="absolute bottom-1/4 left-1/3 w-[400px] h-[400px] bg-emerald-500/5 rounded-full blur-3xl animate-blob animation-delay-4000" />
         
+        {/* Floating particles */}
+        <div className="absolute inset-0">
+          {/* Large drifting orbs */}
+          <div className="absolute top-1/4 left-[10%] w-2 h-2 rounded-full bg-primary/20 animate-drift" />
+          <div className="absolute top-1/2 right-[15%] w-3 h-3 rounded-full bg-purple-500/15 animate-drift animation-delay-2000" />
+          <div className="absolute bottom-1/3 left-[20%] w-2.5 h-2.5 rounded-full bg-primary/15 animate-drift animation-delay-4000" />
+          <div className="absolute top-[60%] right-[25%] w-2 h-2 rounded-full bg-emerald-500/15 animate-drift animation-delay-6000" />
+          
+          {/* Rising particles */}
+          <div className="absolute bottom-0 left-[15%] w-1.5 h-1.5 rounded-full bg-primary/30 animate-float-up" style={{ animationDelay: '0s' }} />
+          <div className="absolute bottom-0 left-[35%] w-1 h-1 rounded-full bg-purple-500/25 animate-float-up" style={{ animationDelay: '4s' }} />
+          <div className="absolute bottom-0 left-[55%] w-1.5 h-1.5 rounded-full bg-primary/20 animate-float-up" style={{ animationDelay: '8s' }} />
+          <div className="absolute bottom-0 left-[75%] w-1 h-1 rounded-full bg-purple-500/30 animate-float-up" style={{ animationDelay: '12s' }} />
+          <div className="absolute bottom-0 left-[90%] w-1.5 h-1.5 rounded-full bg-primary/25 animate-float-up" style={{ animationDelay: '16s' }} />
+        </div>
+        
+        {/* Shimmer line accent */}
+        <div className="absolute top-[30%] left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent animate-shimmer bg-[length:200%_100%]" />
+        
         {/* Subtle grid pattern */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--border)/0.3)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border)/0.3)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,black_70%,transparent_110%)]" />
       </div>
