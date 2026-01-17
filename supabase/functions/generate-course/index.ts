@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -62,11 +63,31 @@ const levelNames = {
   expert: 'Expert'
 };
 
-// Get reliable placeholder image
-function getThemedImage(keyword: string, index: number): string {
-  // Use LoremFlickr - reliable free image service with keywords
-  const cleanKeyword = keyword.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20) || 'education';
-  return `https://loremflickr.com/800/600/${cleanKeyword}?lock=${index}`;
+// Fallback placeholder image
+function getFallbackImage(keyword: string): string {
+  const cleanKeyword = encodeURIComponent(keyword.toLowerCase().replace(/[^a-z0-9\s]/g, '').substring(0, 30) || 'education');
+  return `https://placehold.co/800x600/1a1a2e/eaeaea?text=${cleanKeyword}`;
+}
+
+// Generate image using AI or fallback
+async function generateImage(keyword: string, theme: string, supabaseUrl: string, supabaseKey: string): Promise<string> {
+  try {
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    const { data, error } = await supabase.functions.invoke('generate-image', {
+      body: { keyword, theme }
+    });
+    
+    if (error) {
+      console.error('Image generation error:', error);
+      return getFallbackImage(keyword);
+    }
+    
+    return data?.imageUrl || data?.fallbackUrl || getFallbackImage(keyword);
+  } catch (e) {
+    console.error('Failed to generate image:', e);
+    return getFallbackImage(keyword);
+  }
 }
 
 serve(async (req) => {
@@ -80,6 +101,8 @@ serve(async (req) => {
     console.log(`Generating course: theme="${theme}", minutes=${dailyMinutes}, level=${level}, knownKeywords=${knownKeywords?.length || 0}, hasPlan=${!!coursePlan}`);
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
+    const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
     
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
@@ -88,14 +111,16 @@ serve(async (req) => {
     // If we have a course plan, use it to guide generation
     const hasPlan = coursePlan && coursePlan.days && coursePlan.days.length > 0;
     
-    // Calculate total concepts from plan or estimate
-    // More info slides, with examples, fewer tests
-    const totalConcepts = hasPlan 
-      ? coursePlan.days.reduce((sum, day) => sum + day.concepts.length, 0)
-      : (dailyMinutes <= 5 ? 5 : dailyMinutes <= 10 ? 7 : dailyMinutes <= 15 ? 9 : 12);
+    // STRICT LIMIT: 5-7 slides maximum, regardless of plan
+    const maxSlides = 7;
+    const minSlides = 5;
     
-    // Fewer tests for better reading flow (1 test per 3-4 info slides)
-    const quizCount = Math.max(2, Math.ceil(totalConcepts / 3));
+    const totalConcepts = hasPlan 
+      ? Math.min(maxSlides, coursePlan.days.reduce((sum, day) => sum + day.concepts.length, 0))
+      : Math.min(maxSlides, Math.max(minSlides, Math.floor(dailyMinutes / 2)));
+    
+    // Only 2-3 tests maximum
+    const quizCount = Math.min(3, Math.max(2, Math.ceil(totalConcepts / 3)));
 
     const knownConceptsInstruction = knownKeywords && knownKeywords.length > 0
       ? `\n\nIMPORTANT - ADAPTATION AU NIVEAU DE L'APPRENANT :
@@ -106,70 +131,62 @@ L'apprenant a indiqué qu'il connaît déjà ces concepts : ${knownKeywords.join
 - Proposer des nuances et des approfondissements sur ces sujets`
       : '';
 
-    // Build the plan instruction if we have a course plan
+    // Build the plan instruction if we have a course plan - limit to maxSlides
+    const limitedDays = hasPlan ? coursePlan.days.slice(0, maxSlides) : [];
     const planInstruction = hasPlan 
-      ? `\n\nPLANNING VALIDÉ PAR L'UTILISATEUR - SUIT CE PLAN EXACTEMENT :
+      ? `\n\nPLANNING VALIDÉ - SUIT CE PLAN (limité à ${maxSlides} slides max) :
 Titre du cours : "${coursePlan.courseTitle}"
 Description : "${coursePlan.courseDescription}"
-Catégorie : ${coursePlan.category}
-Icône : ${coursePlan.icon}
 
-${coursePlan.days.map(day => `JOUR ${day.day} - "${day.title}" :
-  Concepts à couvrir : ${day.concepts.join(', ')}`).join('\n\n')}
+${limitedDays.map((day, i) => `SLIDE ${i + 1} - "${day.title}" :
+  Concept : ${day.concepts[0] || day.title}`).join('\n\n')}
 
-IMPORTANT : Crée une slide pour CHAQUE concept listé ci-dessus. Le contenu doit correspondre exactement aux concepts du planning.`
+IMPORTANT : Crée EXACTEMENT ${Math.min(maxSlides, limitedDays.length)} slides, pas plus.`
       : '';
 
-    const systemPrompt = `Tu es un expert pédagogue qui crée des cours éducatifs de haute qualité, structurés comme des présentations modernes type slides.
+    const systemPrompt = `Tu es un expert pédagogue qui crée des cours éducatifs de haute qualité.
 
 Niveau de difficulté : ${levelNames[level]}
 ${levelInstructions[level]}${knownConceptsInstruction}${planInstruction}
 
-Tu dois créer un VRAI COURS structuré en SLIDES INDIVIDUELLES :
-- Chaque section = 1 slide séparée avec un concept clair
-- Contenu concis mais riche (3-5 phrases par slide max)
-- Progression logique entre les slides
-- Variété dans les types de tests
+RÈGLES STRICTES :
+1. MAXIMUM ${maxSlides} SLIDES - pas plus !
+2. Chaque slide doit contenir 150-200 mots MINIMUM avec des exemples concrets
+3. Seulement ${quizCount} questions de test (QCM ou flashcard uniquement)
+4. Contenu RICHE et SUBSTANTIEL, pas superficiel
 
-Le contenu doit être en français, éducatif, engageant et bien structuré.`;
+Le contenu doit être en français, éducatif et engageant.`;
 
-    const userPrompt = hasPlan 
-      ? `Crée le contenu complet du cours "${coursePlan.courseTitle}" en suivant EXACTEMENT le planning validé.
+    const userPrompt = `Crée un cours en EXACTEMENT ${totalConcepts} SLIDES sur : "${theme}"
 
-Pour chaque concept du planning, crée une slide RICHE avec :
-- title: Titre du concept (reprends le concept du planning)
-- content: Explication détaillée avec EXEMPLES CONCRETS (5-8 phrases, ~150-200 mots)
-- imageKeyword: 2-3 mots anglais pour l'image
+STRUCTURE OBLIGATOIRE :
 
-IMPORTANT : Chaque slide doit contenir des EXEMPLES pratiques et concrets !
+1. SLIDES DE CONTENU (${totalConcepts} slides) :
+   Chaque slide DOIT contenir :
+   - title: Titre court (max 50 caractères)
+   - content: Texte RICHE de 150-200 mots avec :
+     * Une explication claire du concept
+     * AU MOINS 2 exemples concrets
+     * Une analogie pour simplifier
+     * Une application pratique
+   - imageKeyword: 2-3 mots anglais pour l'image
 
-Ajoute ${quizCount} questions de test (principalement des QCM simples).`
-      : `Crée un cours en ${totalConcepts} SLIDES sur : "${theme}"
+   EXEMPLE de contenu attendu :
+   "La photosynthèse est le processus par lequel les plantes convertissent la lumière du soleil en énergie. Imaginez une usine verte : les feuilles sont les panneaux solaires, l'eau et le CO2 sont les matières premières, et le glucose produit est le carburant. Par exemple, un grand chêne peut produire assez d'oxygène pour 4 personnes par jour. Les algues marines réalisent aussi ce processus et produisent 50% de l'oxygène terrestre. En pratique, c'est pourquoi les plantes d'intérieur améliorent la qualité de l'air chez vous."
 
-STRUCTURE DU COURS EN SLIDES :
-
-1. SLIDES DE CONTENU (${totalConcepts} slides minimum) :
-   Chaque slide contient UN concept clé avec :
-   - title: Titre court et accrocheur (max 50 caractères)
-   - content: Explication RICHE avec EXEMPLES CONCRETS (5-8 phrases, ~150-200 mots)
-   - imageKeyword: 2-3 mots anglais pour l'image (ex: "brain neurons", "coffee beans")
-
-   IMPORTANT pour le contenu :
-   - Inclure AU MOINS UN exemple concret par slide
-   - Utiliser des analogies pour simplifier les concepts
-   - Donner des applications pratiques
-   - Le contenu doit être substantiel, pas superficiel
-
-2. TESTS (${quizCount} questions seulement) :
-   Principalement des QCM simples :
-   { "type": "quiz", "question": "...", "options": ["Option A", "Option B", "Option C", "Option D"], "correctIndex": 0 }
+2. TESTS (EXACTEMENT ${quizCount} questions) :
+   SEULEMENT 2 TYPES AUTORISÉS :
    
-   Les options doivent être des TEXTES CLAIRS, pas des lettres.
+   - QCM : { "type": "quiz", "question": "Question claire ?", "options": ["Option complète A", "Option complète B", "Option complète C", "Option complète D"], "correctIndex": 0 }
+   
+   - Flashcard : { "type": "flashcard", "question": "Concept à mémoriser", "answer": "Définition complète" }
 
 IMPORTANT :
-- Chaque slide = contenu RICHE avec exemples
-- Peu de tests, beaucoup de contenu éducatif
-- Les options de QCM sont des phrases complètes`;
+- EXACTEMENT ${totalConcepts} slides, pas plus, pas moins
+- Contenu LONG et RICHE (150-200 mots par slide)
+- SEULEMENT ${quizCount} tests
+- Options de QCM = phrases complètes, pas de lettres
+- PAS de type "open-question" ou "slider"`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -188,7 +205,7 @@ IMPORTANT :
             type: 'function',
             function: {
               name: 'create_course',
-              description: 'Crée un cours éducatif structuré en slides avec tests variés',
+              description: 'Crée un cours éducatif structuré en slides',
               parameters: {
                 type: 'object',
                 properties: {
@@ -210,7 +227,7 @@ IMPORTANT :
                   },
                   lessonSections: {
                     type: 'array',
-                    description: 'Les slides du cours (1 concept par slide)',
+                    description: 'Les slides du cours (5-7 maximum)',
                     items: {
                       type: 'object',
                       properties: {
@@ -220,7 +237,7 @@ IMPORTANT :
                         },
                         content: {
                           type: 'string',
-                          description: 'Contenu concis de la slide (3-5 phrases, ~100 mots max)'
+                          description: 'Contenu RICHE de 150-200 mots avec exemples concrets'
                         },
                         imageKeyword: {
                           type: 'string',
@@ -232,14 +249,14 @@ IMPORTANT :
                   },
                   quizQuestions: {
                     type: 'array',
-                    description: 'Questions de test de types variés',
+                    description: 'Questions de test (2-3 maximum, QCM ou flashcard uniquement)',
                     items: {
                       type: 'object',
                       properties: {
                         type: {
                           type: 'string',
-                          enum: ['quiz', 'open-question', 'flashcard', 'slider'],
-                          description: 'Type de question'
+                          enum: ['quiz', 'flashcard'],
+                          description: 'Type de question (quiz ou flashcard uniquement)'
                         },
                         question: {
                           type: 'string',
@@ -248,7 +265,7 @@ IMPORTANT :
                         options: {
                           type: 'array',
                           items: { type: 'string' },
-                          description: 'Options pour QCM (4 choix)'
+                          description: 'Options pour QCM (4 choix, phrases complètes)'
                         },
                         correctIndex: {
                           type: 'number',
@@ -257,20 +274,6 @@ IMPORTANT :
                         answer: {
                           type: 'string',
                           description: 'Réponse pour flashcard'
-                        },
-                        expectedAnswer: {
-                          type: 'string',
-                          description: 'Réponse attendue pour question ouverte'
-                        },
-                        sliderConfig: {
-                          type: 'object',
-                          properties: {
-                            min: { type: 'number' },
-                            max: { type: 'number' },
-                            correct: { type: 'number' },
-                            unit: { type: 'string' }
-                          },
-                          description: 'Configuration pour slider'
                         }
                       },
                       required: ['type', 'question']
@@ -368,12 +371,11 @@ RÉPONDS UNIQUEMENT avec un JSON valide dans ce format exact, sans aucun texte a
   "category": "Catégorie",
   "icon": "📚",
   "lessonSections": [
-    {"title": "Section 1", "content": "Contenu court...", "imageKeyword": "keyword"}
+    {"title": "Section 1", "content": "Contenu riche de 150-200 mots avec exemples...", "imageKeyword": "keyword"}
   ],
   "quizQuestions": [
-    {"type": "quiz", "question": "Question?", "options": ["A", "B", "C", "D"], "correctIndex": 0},
-    {"type": "open-question", "question": "Question ouverte?", "expectedAnswer": "Réponse attendue"},
-    {"type": "flashcard", "question": "Concept", "answer": "Définition"}
+    {"type": "quiz", "question": "Question?", "options": ["Option A complète", "Option B complète", "Option C complète", "Option D complète"], "correctIndex": 0},
+    {"type": "flashcard", "question": "Concept", "answer": "Définition complète"}
   ]
 }`
             }
@@ -402,85 +404,95 @@ RÉPONDS UNIQUEMENT avec un JSON valide dans ce format exact, sans aucun texte a
       throw new Error('Impossible de générer le cours. Veuillez réessayer.');
     }
 
-    // Build the cards array - EACH SECTION IS A SEPARATE CARD (SLIDE)
+    // STRICT: Limit to maxSlides
+    const limitedSections = courseData.lessonSections.slice(0, maxSlides);
+    console.log(`Processing ${limitedSections.length} slides (limited from ${courseData.lessonSections.length})`);
+
+    // Build the cards array
     const cards: any[] = [];
 
+    // Generate images in parallel for all sections
+    const imagePromises = limitedSections.map((section: any) => 
+      generateImage(section.imageKeyword || theme, theme, SUPABASE_URL, SUPABASE_ANON_KEY)
+    );
+    const imageUrls = await Promise.all(imagePromises);
+
     // Each section becomes a separate "info" card (slide)
-    courseData.lessonSections.forEach((section: any, index: number) => {
-      const imageUrl = getThemedImage(section.imageKeyword || theme, index);
+    limitedSections.forEach((section: any, index: number) => {
       cards.push({
         type: 'info',
         title: section.title,
         content: section.content,
-        image_url: imageUrl,
+        image_url: imageUrls[index],
         xpReward: 15
       });
     });
 
-    // Add quiz questions - ensure proper format
-    courseData.quizQuestions.forEach((quiz: any, index: number) => {
+    // Limit quiz questions to quizCount
+    const limitedQuizzes = (courseData.quizQuestions || []).slice(0, quizCount);
+
+    // Add quiz questions - only quiz and flashcard types
+    limitedQuizzes.forEach((quiz: any, index: number) => {
       const questionType = quiz.type || 'quiz';
       
-      // Ensure options are properly formatted strings
-      const formatOptions = (options: any[]): Array<{id: string; text: string; isCorrect: boolean}> => {
-        if (!options || !Array.isArray(options)) return [];
-        return options.map((opt: any, i: number) => ({
-          id: `opt-${index}-${i}`,
-          text: typeof opt === 'string' ? opt : (opt?.text || String(opt)),
-          isCorrect: i === quiz.correctIndex
-        }));
+      // Format and validate options for QCM
+      const formatOptions = (options: any[]): Array<{id: string; text: string; isCorrect: boolean}> | null => {
+        if (!options || !Array.isArray(options)) return null;
+        
+        const validOptions = options
+          .map((opt: any, i: number) => {
+            const text = typeof opt === 'string' ? opt.trim() : (opt?.text?.trim() || '');
+            if (!text || text.length < 2) return null;
+            return {
+              id: `opt-${index}-${i}`,
+              text: text,
+              isCorrect: i === quiz.correctIndex
+            };
+          })
+          .filter(Boolean) as Array<{id: string; text: string; isCorrect: boolean}>;
+        
+        // Need at least 2 valid options
+        return validOptions.length >= 2 ? validOptions : null;
       };
       
-      switch (questionType) {
-        case 'quiz':
+      // Only allow quiz and flashcard types
+      if (questionType === 'quiz') {
+        const formattedOptions = formatOptions(quiz.options);
+        if (formattedOptions) {
           cards.push({
             type: 'quiz',
             title: `Question ${index + 1}`,
             content: quiz.question,
-            options: formatOptions(quiz.options),
+            options: formattedOptions,
             xpReward: 25
           });
-          break;
-          
-        case 'open-question':
-          cards.push({
-            type: 'open-question',
-            title: `Réflexion ${index + 1}`,
-            content: quiz.question,
-            expectedAnswer: quiz.expectedAnswer || quiz.answer || '',
-            xpReward: 30
-          });
-          break;
-          
-        case 'flashcard':
+        } else {
+          // Convert to flashcard if options are invalid
           cards.push({
             type: 'flashcard',
             title: `Mémorisation ${index + 1}`,
             content: quiz.question,
-            flashcard_back: quiz.answer || quiz.expectedAnswer || '',
+            flashcard_back: quiz.answer || quiz.options?.[quiz.correctIndex] || 'Réponse à découvrir',
             xpReward: 20
           });
-          break;
-          
-        case 'slider':
-          cards.push({
-            type: 'slider',
-            title: `Estimation ${index + 1}`,
-            content: quiz.question,
-            slider_config: quiz.sliderConfig || { min: 0, max: 100, correct: 50, unit: '%' },
-            xpReward: 20
-          });
-          break;
-          
-        default:
-          // Fallback to quiz type
-          cards.push({
-            type: 'quiz',
-            title: `Question ${index + 1}`,
-            content: quiz.question,
-            options: formatOptions(quiz.options),
-            xpReward: 25
-          });
+        }
+      } else if (questionType === 'flashcard') {
+        cards.push({
+          type: 'flashcard',
+          title: `Mémorisation ${index + 1}`,
+          content: quiz.question,
+          flashcard_back: quiz.answer || '',
+          xpReward: 20
+        });
+      } else {
+        // Convert any other type to flashcard
+        cards.push({
+          type: 'flashcard',
+          title: `Mémorisation ${index + 1}`,
+          content: quiz.question,
+          flashcard_back: quiz.answer || quiz.expectedAnswer || 'Réponse à découvrir',
+          xpReward: 20
+        });
       }
     });
 
@@ -488,7 +500,7 @@ RÉPONDS UNIQUEMENT avec un JSON valide dans ce format exact, sans aucun texte a
 
     // Calculate optimal duration based on card count
     const totalCards = cards.length;
-    const cardsPerDay = Math.max(4, Math.ceil(dailyMinutes / 2)); // ~2 min per card, more cards per day
+    const cardsPerDay = Math.max(4, Math.ceil(dailyMinutes / 2));
     const durationDays = Math.max(1, Math.ceil(totalCards / cardsPerDay));
 
     const result = {
@@ -504,7 +516,7 @@ RÉPONDS UNIQUEMENT avec un JSON valide dans ce format exact, sans aucun texte a
       cards: cards
     };
 
-    console.log(`Course generated: "${result.title}" with ${cards.length} cards (${courseData.lessonSections.length} slides, ${courseData.quizQuestions.length} questions), duration: ${durationDays} days`);
+    console.log(`Course generated: "${result.title}" with ${cards.length} cards (${limitedSections.length} slides, ${limitedQuizzes.length} questions), duration: ${durationDays} days`);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
