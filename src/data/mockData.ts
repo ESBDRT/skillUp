@@ -1,5 +1,18 @@
 // Mock data for the micro-learning app
 
+export interface Resource {
+  title: string;
+  url: string;
+  source?: string;
+  description?: string;
+}
+
+export interface Resources {
+  youtube?: Resource[];
+  github?: Resource[];
+  articles?: Resource[];
+}
+
 export interface LessonSection {
   id: string;
   title: string;
@@ -25,6 +38,8 @@ export interface Card {
   };
   // For lesson type cards (PDF-like course)
   sections?: LessonSection[];
+  // Resources for further learning
+  resources?: Resources;
   xpReward: number;
 }
 
