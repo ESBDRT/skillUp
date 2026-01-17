@@ -46,6 +46,9 @@ interface ImportResult {
   errors: Array<{ courseIndex: number; courseTitle: string; error: string }>;
 }
 
+// POC User ID - matches the one in src/lib/constants.ts
+const POC_USER_ID = "00000000-0000-0000-0000-000000000001";
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -53,30 +56,13 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Get authorization header
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Authorization header required' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Create Supabase client
+    // Create Supabase client with service role for POC
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      global: { headers: { Authorization: authHeader } }
-    });
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Authentication required' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // Use POC user ID (no auth required for POC)
+    const userId = POC_USER_ID;
 
     // Parse request body
     const body: ImportRequest = await req.json();
@@ -88,7 +74,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`Starting import of ${body.courses.length} courses for user ${user.id}`);
+    console.log(`Starting import of ${body.courses.length} courses for POC user ${userId}`);
 
     const result: ImportResult = {
       success: true,
@@ -114,7 +100,7 @@ Deno.serve(async (req) => {
         // Calculate total XP
         const totalXp = course.cards.reduce((sum, card) => sum + (card.xpReward || 10), 0);
 
-        // Insert course
+        // Insert course with POC user ID
         const { data: courseData, error: courseError } = await supabase
           .from('courses')
           .insert({
@@ -125,7 +111,7 @@ Deno.serve(async (req) => {
             level: course.level,
             estimated_minutes: course.estimatedMinutes || 10,
             total_xp: totalXp,
-            user_id: user.id,
+            user_id: userId,
             is_published: false
           })
           .select('id')
