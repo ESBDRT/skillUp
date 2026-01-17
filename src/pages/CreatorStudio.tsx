@@ -3,11 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Plus, Trash2, GripVertical, Save, Sparkles, PenLine, Eye, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, GripVertical, Save, Sparkles, PenLine, Eye, ChevronDown, ChevronUp, Upload } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import BottomNav from "@/components/BottomNav";
 import { AIGenerationForm } from "@/components/AIGenerationForm";
 import { GenerationLoader } from "@/components/GenerationLoader";
+import { ImportCoursesForm } from "@/components/ImportCoursesForm";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -42,7 +43,7 @@ interface GeneratedCourse {
   cards: CourseCard[];
 }
 
-type CreationMode = 'select' | 'ai' | 'manual';
+type CreationMode = 'select' | 'ai' | 'manual' | 'import';
 
 const cardTypeLabels: Record<CardType, string> = {
   info: "📖 Information",
@@ -260,6 +261,27 @@ export default function CreatorStudio() {
                 Créez chaque carte vous-même avec un contrôle total sur le contenu, les questions et la structure du cours.
               </p>
             </motion.button>
+
+            {/* Import Option */}
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setMode('import')}
+              className="rounded-2xl border-2 border-border bg-card p-6 text-left transition-all hover:border-primary/40 hover:shadow-lg"
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
+                  <Upload className="w-6 h-6 text-muted-foreground" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold">Importer des cours</h3>
+                  <p className="text-sm text-muted-foreground">Import en masse</p>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Importez plusieurs cours d'un coup via un fichier JSON. Idéal pour les créateurs avec du contenu existant.
+              </p>
+            </motion.button>
           </div>
         </main>
 
@@ -317,6 +339,28 @@ export default function CreatorStudio() {
             
             <AIGenerationForm onGenerate={handleAIGenerate} isGenerating={isGenerating} />
           </Card>
+        </main>
+
+        <BottomNav />
+      </div>
+    );
+  }
+
+  // Import Screen
+  if (mode === 'import') {
+    return (
+      <div className="min-h-screen bg-background pb-20">
+        <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-lg border-b border-border px-4 py-3">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => setMode('select')}>
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <h1 className="text-xl font-bold">Importer des cours</h1>
+          </div>
+        </header>
+
+        <main className="p-4 max-w-2xl mx-auto">
+          <ImportCoursesForm />
         </main>
 
         <BottomNav />
