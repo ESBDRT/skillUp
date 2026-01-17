@@ -167,26 +167,28 @@ STRUCTURE OBLIGATOIRE :
 1. SLIDES DE CONTENU (${totalConcepts} slides) :
    Chaque slide DOIT contenir :
    - title: Titre court (max 50 caractères)
-   - content: Texte RICHE de 150-200 mots avec :
+   - content: Texte RICHE de 150-200 mots FORMATÉ EN MARKDOWN avec :
+     * Des **mots en gras** pour les concepts clés
+     * Des sauts de ligne (\\n\\n) entre les paragraphes
      * Une explication claire du concept
      * AU MOINS 2 exemples concrets
      * Une analogie pour simplifier
      * Une application pratique
-   - imageKeyword: 2-3 mots anglais pour l'image
+   - imageKeyword: 2-3 mots anglais pour l'image générée par IA
 
-   EXEMPLE de contenu attendu :
-   "La photosynthèse est le processus par lequel les plantes convertissent la lumière du soleil en énergie. Imaginez une usine verte : les feuilles sont les panneaux solaires, l'eau et le CO2 sont les matières premières, et le glucose produit est le carburant. Par exemple, un grand chêne peut produire assez d'oxygène pour 4 personnes par jour. Les algues marines réalisent aussi ce processus et produisent 50% de l'oxygène terrestre. En pratique, c'est pourquoi les plantes d'intérieur améliorent la qualité de l'air chez vous."
+   EXEMPLE de contenu attendu (format Markdown) :
+   "**La photosynthèse** est le processus par lequel les plantes convertissent la lumière du soleil en énergie.\\n\\n**Imaginez une usine verte** : les feuilles sont les panneaux solaires, l'eau et le CO2 sont les matières premières, et le glucose produit est le carburant.\\n\\n*Exemples concrets :*\\n- Un grand chêne peut produire assez d'oxygène pour 4 personnes par jour\\n- Les algues marines produisent 50% de l'oxygène terrestre\\n\\nEn pratique, c'est pourquoi les plantes d'intérieur améliorent la qualité de l'air chez vous."
 
 2. TESTS (EXACTEMENT ${quizCount} questions) :
    SEULEMENT 2 TYPES AUTORISÉS :
    
    - QCM : { "type": "quiz", "question": "Question claire ?", "options": ["Option complète A", "Option complète B", "Option complète C", "Option complète D"], "correctIndex": 0 }
    
-   - Flashcard : { "type": "flashcard", "question": "Concept à mémoriser", "answer": "Définition complète" }
+   - Flashcard : { "type": "flashcard", "question": "Concept à mémoriser", "answer": "Définition complète et détaillée" }
 
 IMPORTANT :
 - EXACTEMENT ${totalConcepts} slides, pas plus, pas moins
-- Contenu LONG et RICHE (150-200 mots par slide)
+- Contenu LONG et RICHE (150-200 mots par slide) avec formatage MARKDOWN
 - SEULEMENT ${quizCount} tests
 - Options de QCM = phrases complètes, pas de lettres
 - PAS de type "open-question" ou "slider"`;
