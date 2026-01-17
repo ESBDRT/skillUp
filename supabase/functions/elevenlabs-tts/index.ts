@@ -75,10 +75,11 @@ serve(async (req) => {
         "Content-Type": "audio/mpeg",
       },
     });
-  } catch (error) {
-    console.error("Error in elevenlabs-tts function:", error);
+  } catch (err) {
+    console.error("Error in elevenlabs-tts function:", err);
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
     return new Response(
-      JSON.stringify({ error: 'Internal server error', message: error.message }),
+      JSON.stringify({ error: 'Internal server error', message: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

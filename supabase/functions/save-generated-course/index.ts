@@ -152,6 +152,8 @@ serve(async (req) => {
           cards_end_index: endIndex,
           is_completed: false,
           earned_xp: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         });
       }
     }
