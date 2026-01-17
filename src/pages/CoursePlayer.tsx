@@ -14,7 +14,8 @@ import OpenQuestionCard from '@/components/cards/OpenQuestionCard';
 import LessonCard from '@/components/cards/LessonCard';
 import VictoryScreen from '@/components/VictoryScreen';
 import XPPopup from '@/components/XPPopup';
-import { X, Volume2, MessageCircle, Save, Loader2 } from 'lucide-react';
+import AudioPlayer from '@/components/AudioPlayer';
+import { X, MessageCircle, Save, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const CoursePlayer = () => {
@@ -140,6 +141,18 @@ const CoursePlayer = () => {
 
   const currentCard = lesson.cards[currentCardIndex];
   const progress = ((currentCardIndex + 1) / lesson.cards.length) * 100;
+
+  // Get text content for audio
+  const getCardTextContent = () => {
+    let text = currentCard.title || '';
+    if (currentCard.content) {
+      text += '. ' + currentCard.content;
+    }
+    if (currentCard.type === 'flashcard' && currentCard.flashcardBack) {
+      text += '. ' + currentCard.flashcardBack;
+    }
+    return text;
+  };
 
   const handleXPGain = useCallback((amount: number) => {
     setXpAmount(amount);
@@ -317,14 +330,12 @@ const CoursePlayer = () => {
         </div>
       </main>
 
+      {/* Audio Player */}
+      <AudioPlayer text={getCardTextContent()} />
+
       {/* Bottom Actions */}
       <footer className="px-4 py-4 border-t border-border bg-card safe-bottom">
-        <div className="flex items-center justify-between">
-          <button className="flex items-center gap-2 px-4 py-2 bg-secondary rounded-full hover:bg-secondary/80 transition-colors">
-            <Volume2 className="w-4 h-4 text-foreground" />
-            <span className="text-sm font-medium text-foreground">Écouter</span>
-          </button>
-
+        <div className="flex items-center justify-end">
           <button className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full hover:bg-primary/20 transition-colors">
             <MessageCircle className="w-4 h-4 text-primary" />
             <span className="text-sm font-medium text-primary">Aide IA</span>
