@@ -6,6 +6,7 @@ import { mockLessons, categories } from '@/data/mockData';
 import { Progress } from '@/components/ui/progress';
 import KnowledgeTree from '@/components/KnowledgeTree';
 import BottomNav from '@/components/BottomNav';
+import { SavedCourses } from '@/components/SavedCourses';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -118,6 +119,16 @@ const Dashboard = () => {
             </div>
             <span className="font-medium text-foreground">Mon Cerveau</span>
           </button>
+        </motion.div>
+
+        {/* Saved Courses */}
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.35 }}
+          className="mb-8"
+        >
+          <SavedCourses />
         </motion.div>
 
         {/* Categories */}

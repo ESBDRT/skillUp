@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { mockLessons, Lesson } from '@/data/mockData';
 import { useUser } from '@/context/UserContext';
+import { supabase } from '@/integrations/supabase/client';
 import StoryProgress from '@/components/StoryProgress';
 import InfoCard from '@/components/cards/InfoCard';
 import QuizCard from '@/components/cards/QuizCard';
@@ -13,16 +14,18 @@ import OpenQuestionCard from '@/components/cards/OpenQuestionCard';
 import LessonCard from '@/components/cards/LessonCard';
 import VictoryScreen from '@/components/VictoryScreen';
 import XPPopup from '@/components/XPPopup';
-import { X, Volume2, MessageCircle } from 'lucide-react';
+import { X, Volume2, MessageCircle, Save, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 const CoursePlayer = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { addXP, completeLesson, addMinutes } = useUser();
+  const { addXP, completeLesson, addMinutes, user } = useUser();
   
-  // Check if we have a generated course from state
+  // Check if we have a generated course from state or resuming
   const generatedCourse = location.state?.generatedCourse;
+  const resumedProgress = location.state?.resumedProgress;
   
   // Use generated course if available, otherwise find from mock data
   const lesson: Lesson | undefined = generatedCourse 
@@ -41,13 +44,91 @@ const CoursePlayer = () => {
       }
     : mockLessons.find(l => l.id === courseId);
     
-  const [currentCardIndex, setCurrentCardIndex] = useState(0);
-  const [earnedXP, setEarnedXP] = useState(0);
+  const [currentCardIndex, setCurrentCardIndex] = useState(resumedProgress?.current_card_index || 0);
+  const [earnedXP, setEarnedXP] = useState(resumedProgress?.earned_xp || 0);
+  const [completedCards, setCompletedCards] = useState<Set<number>>(
+    new Set(resumedProgress?.completed_cards || [])
+  );
   const [showXPPopup, setShowXPPopup] = useState(false);
   const [xpAmount, setXpAmount] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [progressId, setProgressId] = useState<string | null>(resumedProgress?.id || null);
   
   const isPreview = !!generatedCourse;
+
+  // Auto-save progress periodically
+  useEffect(() => {
+    if (!generatedCourse || isComplete) return;
+
+    const saveInterval = setInterval(() => {
+      saveProgress(false);
+    }, 30000); // Save every 30 seconds
+
+    return () => clearInterval(saveInterval);
+  }, [currentCardIndex, earnedXP, completedCards, isComplete]);
+
+  const saveProgress = async (showToast = true) => {
+    if (!generatedCourse) return;
+
+    // Use a consistent user ID (could be from localStorage or a generated ID)
+    const userId = localStorage.getItem('odemon_user_id') || (() => {
+      const id = crypto.randomUUID();
+      localStorage.setItem('odemon_user_id', id);
+      return id;
+    })();
+
+    setIsSaving(true);
+    try {
+      const progressData = {
+        user_id: userId,
+        course_id: generatedCourse.id,
+        course_data: generatedCourse,
+        current_card_index: currentCardIndex,
+        completed_cards: Array.from(completedCards),
+        earned_xp: earnedXP,
+        is_completed: isComplete,
+      };
+
+      if (progressId) {
+        // Update existing progress
+        const { error } = await supabase
+          .from('course_progress')
+          .update(progressData)
+          .eq('id', progressId);
+
+        if (error) throw error;
+      } else {
+        // Create new progress
+        const { data, error } = await supabase
+          .from('course_progress')
+          .upsert(progressData, { onConflict: 'user_id,course_id' })
+          .select()
+          .single();
+
+        if (error) throw error;
+        if (data) setProgressId(data.id);
+      }
+
+      if (showToast) {
+        toast.success('Progression sauvegardée !');
+      }
+    } catch (error) {
+      console.error('Error saving progress:', error);
+      if (showToast) {
+        toast.error('Erreur lors de la sauvegarde');
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleExit = async () => {
+    if (generatedCourse && !isComplete) {
+      await saveProgress(true);
+    }
+    navigate('/dashboard');
+  };
 
   if (!lesson) {
     return (
@@ -64,9 +145,10 @@ const CoursePlayer = () => {
     setXpAmount(amount);
     setShowXPPopup(true);
     setEarnedXP(prev => prev + amount);
+    setCompletedCards(prev => new Set([...prev, currentCardIndex]));
     addXP(amount);
     setTimeout(() => setShowXPPopup(false), 1500);
-  }, [addXP]);
+  }, [addXP, currentCardIndex]);
 
   const handleNext = useCallback(() => {
     if (currentCardIndex < lesson.cards.length - 1) {
@@ -77,6 +159,15 @@ const CoursePlayer = () => {
       completeLesson(lesson.id);
       addMinutes(lesson.estimatedMinutes);
       
+      // Mark as complete in database
+      if (progressId) {
+        supabase
+          .from('course_progress')
+          .update({ is_completed: true })
+          .eq('id', progressId)
+          .then(() => {});
+      }
+      
       // Fire confetti!
       confetti({
         particleCount: 100,
@@ -85,7 +176,7 @@ const CoursePlayer = () => {
         colors: ['#4F46E5', '#10B981', '#F59E0B'],
       });
     }
-  }, [currentCardIndex, lesson, completeLesson, addMinutes]);
+  }, [currentCardIndex, lesson, completeLesson, addMinutes, progressId]);
 
   const handlePrev = useCallback(() => {
     if (currentCardIndex > 0) {
@@ -151,7 +242,7 @@ const CoursePlayer = () => {
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur safe-top">
         <div className="px-4 py-3 flex items-center gap-4">
           <button 
-            onClick={() => navigate('/dashboard')}
+            onClick={handleExit}
             className="p-2 hover:bg-secondary rounded-full transition-colors"
           >
             <X className="w-5 h-5 text-foreground" />
@@ -161,6 +252,22 @@ const CoursePlayer = () => {
             current={currentCardIndex} 
             total={lesson.cards.length} 
           />
+
+          {/* Save button for generated courses */}
+          {isPreview && (
+            <button
+              onClick={() => saveProgress(true)}
+              disabled={isSaving}
+              className="p-2 hover:bg-secondary rounded-full transition-colors"
+              title="Sauvegarder la progression"
+            >
+              {isSaving ? (
+                <Loader2 className="w-5 h-5 text-primary animate-spin" />
+              ) : (
+                <Save className="w-5 h-5 text-primary" />
+              )}
+            </button>
+          )}
         </div>
       </header>
 

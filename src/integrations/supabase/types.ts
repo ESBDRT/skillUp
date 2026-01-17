@@ -67,6 +67,45 @@ export type Database = {
           },
         ]
       }
+      course_progress: {
+        Row: {
+          completed_cards: number[] | null
+          course_data: Json
+          course_id: string
+          created_at: string
+          current_card_index: number
+          earned_xp: number
+          id: string
+          is_completed: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_cards?: number[] | null
+          course_data: Json
+          course_id: string
+          created_at?: string
+          current_card_index?: number
+          earned_xp?: number
+          id?: string
+          is_completed?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_cards?: number[] | null
+          course_data?: Json
+          course_id?: string
+          created_at?: string
+          current_card_index?: number
+          earned_xp?: number
+          id?: string
+          is_completed?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       courses: {
         Row: {
           category: string
