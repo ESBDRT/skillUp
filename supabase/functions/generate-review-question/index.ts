@@ -21,72 +21,46 @@ serve(async (req) => {
       questionType: 'flashcard' | 'qcm' | 'open' 
     };
 
-    const FEATHERLESS_API_KEY = Deno.env.get("API");
-    if (!FEATHERLESS_API_KEY) {
-      throw new Error("API key is not configured");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    let prompt = '';
-    
-    if (questionType === 'qcm') {
-      prompt = `Génère une question à choix multiples pour tester la connaissance de ce concept:
+    // Force QCM type for all questions
+    const prompt = `Génère une question à choix multiples (QCM) pour tester ce concept:
 
 Titre: ${concept.concept_title}
 Contenu: ${concept.concept_content || 'Non spécifié'}
 
-Retourne UNIQUEMENT un JSON valide avec cette structure exacte:
+RÈGLES STRICTES :
+1. UNIQUEMENT un QCM avec 4 propositions de réponses
+2. Une seule bonne réponse
+3. Les mauvaises réponses doivent être plausibles
+
+Réponds UNIQUEMENT avec ce JSON :
 {
-  "question": "La question posée",
+  "question": "La question posée ?",
   "options": [
-    {"id": "a", "text": "Option A", "isCorrect": false},
-    {"id": "b", "text": "Option B", "isCorrect": true},
-    {"id": "c", "text": "Option C", "isCorrect": false},
-    {"id": "d", "text": "Option D", "isCorrect": false}
+    {"id": "a", "text": "Bonne réponse", "isCorrect": true},
+    {"id": "b", "text": "Mauvaise réponse 1", "isCorrect": false},
+    {"id": "c", "text": "Mauvaise réponse 2", "isCorrect": false},
+    {"id": "d", "text": "Mauvaise réponse 3", "isCorrect": false}
   ],
-  "explanation": "Explication courte de la bonne réponse"
-}
-
-Une seule option doit être correcte. La question doit tester la compréhension, pas juste la mémorisation.`;
-    } else if (questionType === 'open') {
-      prompt = `Génère une question ouverte pour tester la compréhension de ce concept:
-
-Titre: ${concept.concept_title}
-Contenu: ${concept.concept_content || 'Non spécifié'}
-
-Retourne UNIQUEMENT un JSON valide avec cette structure exacte:
-{
-  "question": "Une question ouverte qui demande d'expliquer ou d'appliquer le concept",
-  "expectedAnswer": "Les points clés attendus dans une bonne réponse",
-  "hints": ["Indice 1", "Indice 2"]
-}
-
-La question doit encourager la réflexion et l'application du concept.`;
-    } else {
-      prompt = `Génère une flashcard améliorée pour réviser ce concept:
-
-Titre: ${concept.concept_title}
-Contenu: ${concept.concept_content || 'Non spécifié'}
-
-Retourne UNIQUEMENT un JSON valide avec cette structure exacte:
-{
-  "front": "Question ou prompt qui fait réfléchir",
-  "back": "Réponse détaillée avec un exemple concret",
-  "tip": "Astuce mnémotechnique ou analogie pour mieux retenir"
+  "explanation": "Explication de la bonne réponse"
 }`;
-    }
 
-    const response = await fetch("https://api.featherless.ai/v1/chat/completions", {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${FEATHERLESS_API_KEY}`,
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "mistralai/Mistral-Nemo-Instruct-2407",
+        model: "google/gemini-2.5-flash",
         messages: [
           { 
             role: "system", 
-            content: "Tu es un expert en pédagogie et en création de questions d'évaluation. Tu génères des questions engageantes et efficaces pour l'apprentissage par répétition espacée. Réponds UNIQUEMENT avec du JSON valide, sans markdown ni texte supplémentaire."
+            content: "Tu es un expert en création de QCM pédagogiques. Tu génères UNIQUEMENT des questions à choix multiples avec 4 options. Réponds UNIQUEMENT avec du JSON valide."
           },
           { role: "user", content: prompt }
         ],
@@ -102,6 +76,12 @@ Retourne UNIQUEMENT un JSON valide avec cette structure exacte:
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: "Payment required" }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       throw new Error(`API error: ${response.status}`);
     }
 
@@ -114,38 +94,36 @@ Retourne UNIQUEMENT un JSON valide avec cette structure exacte:
       // Try to extract JSON if wrapped in markdown
       const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
       const jsonStr = jsonMatch ? jsonMatch[1] : content;
-      result = JSON.parse(jsonStr.trim());
+      const parsed = JSON.parse(jsonStr.trim());
+      
+      // Ensure it's a proper QCM format
+      result = {
+        question: parsed.question || `Question sur "${concept.concept_title}"`,
+        options: Array.isArray(parsed.options) ? parsed.options : [
+          { id: 'a', text: concept.concept_content?.substring(0, 50) || 'Réponse A', isCorrect: true },
+          { id: 'b', text: 'Réponse incorrecte B', isCorrect: false },
+          { id: 'c', text: 'Réponse incorrecte C', isCorrect: false },
+          { id: 'd', text: 'Réponse incorrecte D', isCorrect: false },
+        ],
+        explanation: parsed.explanation || 'Revoyez ce concept.'
+      };
     } catch (e) {
       console.error('Failed to parse AI response:', content);
-      // Return fallback based on type
-      if (questionType === 'qcm') {
-        result = {
-          question: `Que savez-vous sur "${concept.concept_title}" ?`,
-          options: [
-            { id: 'a', text: concept.concept_content?.substring(0, 50) || 'Option A', isCorrect: true },
-            { id: 'b', text: 'Réponse incorrecte B', isCorrect: false },
-            { id: 'c', text: 'Réponse incorrecte C', isCorrect: false },
-            { id: 'd', text: 'Réponse incorrecte D', isCorrect: false },
-          ],
-          explanation: concept.concept_content || 'Revoyez ce concept.'
-        };
-      } else if (questionType === 'open') {
-        result = {
-          question: `Expliquez le concept de "${concept.concept_title}" avec vos propres mots.`,
-          expectedAnswer: concept.concept_content || 'Explication attendue',
-          hints: ['Pensez aux points clés', 'Utilisez des exemples']
-        };
-      } else {
-        result = {
-          front: concept.concept_title,
-          back: concept.concept_content || 'Contenu à réviser',
-          tip: 'Essayez de créer une association mentale'
-        };
-      }
+      // Return fallback QCM
+      result = {
+        question: `Que savez-vous sur "${concept.concept_title}" ?`,
+        options: [
+          { id: 'a', text: concept.concept_content?.substring(0, 50) || 'Réponse A', isCorrect: true },
+          { id: 'b', text: 'Réponse incorrecte B', isCorrect: false },
+          { id: 'c', text: 'Réponse incorrecte C', isCorrect: false },
+          { id: 'd', text: 'Réponse incorrecte D', isCorrect: false },
+        ],
+        explanation: concept.concept_content || 'Revoyez ce concept.'
+      };
     }
 
     return new Response(JSON.stringify({ 
-      type: questionType,
+      type: 'qcm',
       data: result 
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
