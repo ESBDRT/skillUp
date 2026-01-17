@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PlanToggle from '@/components/landing/PlanToggle';
-import TestimonialCard from '@/components/landing/TestimonialCard';
+import TestimonialCarousel from '@/components/landing/TestimonialCarousel';
 import PricingCard from '@/components/landing/PricingCard';
 import FAQItem from '@/components/landing/FAQItem';
 import LanguageToggle from '@/components/landing/LanguageToggle';
@@ -73,27 +73,27 @@ const Landing = () => {
             </span>
           </motion.div>
           
-          <motion.h1 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-5xl md:text-7xl font-extrabold text-foreground mb-6 leading-[1.1] tracking-tight"
-          >
-            {t.hero.title}{' '}
-            <span className="bg-gradient-to-r from-primary via-purple-500 to-primary bg-clip-text text-transparent bg-[size:200%] animate-gradient">
-              {t.hero.titleHighlight}
-            </span>
-          </motion.h1>
-          
-          <motion.p 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="text-xl md:text-2xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed"
-          >
-            {t.hero.subtitle}
-            <strong className="text-foreground block mt-2"> {t.hero.subtitleBold}</strong>
-          </motion.p>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`hero-content-${language}`}
+              initial={{ opacity: 0, y: 15, filter: 'blur(8px)' }}
+              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, y: -15, filter: 'blur(8px)' }}
+              transition={{ duration: 0.4, ease: 'easeOut' }}
+            >
+              <h1 className="text-5xl md:text-7xl font-extrabold text-foreground mb-6 leading-[1.1] tracking-tight">
+                {t.hero.title}{' '}
+                <span className="bg-gradient-to-r from-primary via-purple-500 to-primary bg-clip-text text-transparent bg-[size:200%] animate-gradient">
+                  {t.hero.titleHighlight}
+                </span>
+              </h1>
+              
+              <p className="text-xl md:text-2xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
+                {t.hero.subtitle}
+                <strong className="text-foreground block mt-2"> {t.hero.subtitleBold}</strong>
+              </p>
+            </motion.div>
+          </AnimatePresence>
           
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -108,14 +108,18 @@ const Landing = () => {
             />
           </motion.div>
           
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="text-sm text-muted-foreground"
-          >
-            {planType === 'individual' ? t.hero.individualDesc : t.hero.companyDesc}
-          </motion.p>
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={`hero-desc-${planType}-${language}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="text-sm text-muted-foreground"
+            >
+              {planType === 'individual' ? t.hero.individualDesc : t.hero.companyDesc}
+            </motion.p>
+          </AnimatePresence>
         </div>
       </section>
 
@@ -146,11 +150,17 @@ const Landing = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.3 }}
-              className="grid md:grid-cols-3 gap-6"
+              className="grid md:grid-cols-[1.2fr_1fr] gap-8"
             >
-              {content.useCases.map((useCase, index) => (
-                <UseCaseCard key={index} {...useCase} index={index} />
-              ))}
+              {/* Featured use case */}
+              <UseCaseCard {...content.useCases[0]} index={0} variant="featured" />
+              
+              {/* Stacked compact use cases */}
+              <div className="flex flex-col gap-6">
+                {content.useCases.slice(1).map((useCase, index) => (
+                  <UseCaseCard key={index + 1} {...useCase} index={index + 1} variant="compact" />
+                ))}
+              </div>
             </motion.div>
           </AnimatePresence>
         </div>
@@ -158,10 +168,7 @@ const Landing = () => {
 
       {/* Testimonials Section */}
       <section className="relative py-24 px-6">
-        {/* Section divider wave */}
-        <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-transparent to-muted/30" />
-        
-        <div className="max-w-6xl mx-auto relative z-10">
+        <div className="max-w-4xl mx-auto relative z-10">
           <AnimatePresence mode="wait">
             <motion.div
               key={`testimonials-header-${planType}-${language}`}
@@ -178,20 +185,8 @@ const Landing = () => {
             </motion.div>
           </AnimatePresence>
           
-          <AnimatePresence mode="wait">
-            <motion.div 
-              key={`${planType}-${language}`}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-              className="grid md:grid-cols-3 gap-6"
-            >
-              {content.testimonials.map((testimonial, index) => (
-                <TestimonialCard key={index} {...testimonial} index={index} />
-              ))}
-            </motion.div>
-          </AnimatePresence>
+          {/* Single featured testimonial carousel */}
+          <TestimonialCarousel testimonials={content.testimonials} language={language} planType={planType} />
         </div>
       </section>
 
@@ -257,7 +252,7 @@ const Landing = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.3 }}
-              className="bg-card rounded-2xl border border-border p-6 shadow-lg"
+              className="space-y-0"
             >
               {content.faq.map((item, index) => (
                 <FAQItem key={index} {...item} index={index} />
@@ -268,29 +263,40 @@ const Landing = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="relative py-24 px-6">
-        <div className="max-w-4xl mx-auto text-center relative z-10">
-          <div className="relative inline-block">
-            {/* Glow effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-purple-500/20 to-primary/20 blur-3xl rounded-full" />
-            
-            <div className="relative bg-card border border-border rounded-3xl p-12 shadow-xl">
+      <section className="relative py-32 px-6 overflow-hidden">
+        {/* Full-width gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-purple-500/5 to-primary/8" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(var(--primary)/0.12)_0%,transparent_70%)]" />
+        
+        {/* Floating decorative elements */}
+        <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-primary/10 rounded-full blur-2xl animate-blob" />
+        <div className="absolute bottom-1/4 right-1/4 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl animate-blob animation-delay-2000" />
+        
+        <div className="max-w-3xl mx-auto text-center relative z-10">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`cta-${planType}-${language}`}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.4 }}
+            >
               <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-6">
                 {t.cta.title}
               </h2>
-              <p className="text-xl text-muted-foreground mb-8">
+              <p className="text-xl text-muted-foreground mb-10 max-w-xl mx-auto">
                 {planType === 'individual' ? t.cta.individualSubtitle : t.cta.companySubtitle}
               </p>
               <Button 
                 size="lg" 
-                className="text-lg px-10 py-6 shadow-lg shadow-primary/30 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90" 
+                className="text-lg px-12 py-7 shadow-xl shadow-primary/25 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 transition-all hover:scale-105" 
                 onClick={() => navigate('/dashboard')}
               >
                 {planType === 'individual' ? t.cta.individualButton : t.cta.companyButton}
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
-            </div>
-          </div>
+            </motion.div>
+          </AnimatePresence>
         </div>
       </section>
 
