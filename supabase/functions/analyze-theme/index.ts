@@ -20,10 +20,10 @@ serve(async (req) => {
     
     console.log(`Analyzing theme: "${theme}" for level: ${level}`);
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const FEATHERLESS_API_KEY = Deno.env.get('API');
     
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    if (!FEATHERLESS_API_KEY) {
+      throw new Error('API key is not configured');
     }
 
     const levelDescriptions = {
@@ -32,14 +32,14 @@ serve(async (req) => {
       expert: 'maîtrise avancée, concepts complexes'
     };
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch('https://api.featherless.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${FEATHERLESS_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'mistralai/Mistral-Nemo-Instruct-2407',
         messages: [
           {
             role: 'user',
@@ -62,11 +62,11 @@ Tu DOIS répondre UNIQUEMENT avec ce JSON, sans aucun texte avant ou après :
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Lovable AI error:', response.status, errorText);
+      console.error('Featherless API error:', response.status, errorText);
       
       if (response.status === 402) {
         return new Response(JSON.stringify({ 
-          error: 'Crédits insuffisants. Veuillez recharger votre compte.' 
+          error: 'Crédits API insuffisants.' 
         }), {
           status: 402,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }

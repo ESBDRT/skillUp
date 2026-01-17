@@ -79,26 +79,26 @@ serve(async (req) => {
     
     console.log(`Generating course: theme="${theme}", minutes=${dailyMinutes}, level=${level}`);
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const FEATHERLESS_API_KEY = Deno.env.get('API');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
     
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    if (!FEATHERLESS_API_KEY) {
+      throw new Error('API key is not configured');
     }
 
     const hasPlan = coursePlan && coursePlan.days && coursePlan.days.length > 0;
     const maxSlides = 5;
     const quizCount = 3;
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch('https://api.featherless.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${FEATHERLESS_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'mistralai/Mistral-Nemo-Instruct-2407',
         messages: [
           {
             role: 'user',
@@ -123,22 +123,13 @@ Réponds UNIQUEMENT avec ce JSON :
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Lovable AI error:', response.status, errorText);
+      console.error('Featherless API error:', response.status, errorText);
       
       if (response.status === 429) {
         return new Response(JSON.stringify({ 
           error: 'Limite de requêtes atteinte. Veuillez réessayer dans quelques instants.' 
         }), {
           status: 429,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ 
-          error: 'Crédits insuffisants. Veuillez recharger votre compte.' 
-        }), {
-          status: 402,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
@@ -204,6 +195,7 @@ Réponds UNIQUEMENT avec ce JSON :
         ],
         quizQuestions: [
           {
+            type: 'quiz',
             question: `Quel est l'objectif principal de l'étude de ${theme} ?`,
             options: [
               'Comprendre les concepts fondamentaux et leurs applications',
@@ -214,6 +206,7 @@ Réponds UNIQUEMENT avec ce JSON :
             correctIndex: 0
           },
           {
+            type: 'quiz',
             question: `Quelle approche est recommandée pour bien apprendre ${theme} ?`,
             options: [
               'Partir des bases vers les concepts avancés progressivement',
@@ -224,6 +217,7 @@ Réponds UNIQUEMENT avec ce JSON :
             correctIndex: 0
           },
           {
+            type: 'quiz',
             question: `Pourquoi les applications pratiques sont-elles importantes dans l'apprentissage de ${theme} ?`,
             options: [
               'Elles aident à mieux retenir et utiliser les concepts',
