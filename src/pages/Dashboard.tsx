@@ -7,6 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import KnowledgeTree from '@/components/KnowledgeTree';
 import BottomNav from '@/components/BottomNav';
 import { SavedCourses } from '@/components/SavedCourses';
+import { MyCourses } from '@/components/MyCourses';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -121,11 +122,21 @@ const Dashboard = () => {
           </button>
         </motion.div>
 
-        {/* Saved Courses */}
+        {/* My Created Courses */}
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.35 }}
+          className="mb-8"
+        >
+          <MyCourses />
+        </motion.div>
+
+        {/* Saved Courses (In Progress) */}
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.4 }}
           className="mb-8"
         >
           <SavedCourses />
@@ -135,7 +146,7 @@ const Dashboard = () => {
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.4 }}
+          transition={{ delay: 0.45 }}
           className="mb-8"
         >
           <h2 className="text-lg font-bold text-foreground mb-4">Catégories</h2>
@@ -145,7 +156,7 @@ const Dashboard = () => {
                 key={category.id}
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.4 + i * 0.05 }}
+                transition={{ delay: 0.45 + i * 0.05 }}
                 className="flex-shrink-0 flex flex-col items-center gap-2 p-4 bg-card rounded-2xl shadow-card border border-border hover:border-primary transition-colors min-w-[90px]"
               >
                 <span className="text-2xl">{category.icon}</span>
@@ -159,7 +170,7 @@ const Dashboard = () => {
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.5 }}
+          transition={{ delay: 0.55 }}
         >
           <h2 className="text-lg font-bold text-foreground mb-4">Arbre de connaissances</h2>
           <KnowledgeTree lessons={mockLessons} />

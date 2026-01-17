@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Play, Clock, BookOpen, Trash2, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { POC_USER_ID } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -30,12 +31,8 @@ export function SavedCourses() {
   }, []);
 
   const fetchSavedCourses = async () => {
-    // Use a consistent user ID
-    const userId = localStorage.getItem('odemon_user_id');
-    if (!userId) {
-      setIsLoading(false);
-      return;
-    }
+    // Use the POC user ID for all tests
+    const userId = POC_USER_ID;
 
     try {
       const { data, error } = await supabase

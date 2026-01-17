@@ -12,6 +12,7 @@ import { ImportCoursesForm } from "@/components/ImportCoursesForm";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "@/integrations/supabase/client";
 
 type CardType = "info" | "quiz" | "flashcard" | "slider" | "open-question";
 
@@ -115,12 +116,38 @@ export default function CreatorStudio() {
         sliderConfig: card.sliderConfig,
         xpReward: card.xpReward || 10,
       }));
+
+      // Prepare course data for saving
+      const courseToSave = {
+        title: generatedCourse.title,
+        description: generatedCourse.description,
+        category: generatedCourse.category,
+        icon: generatedCourse.icon,
+        level: generatedCourse.level,
+        estimatedMinutes: generatedCourse.estimated_minutes,
+        totalXP: generatedCourse.total_xp,
+        cards: formattedCards,
+      };
+
+      // Save course to database
+      toast.info('Sauvegarde du cours...');
       
-      // Navigate directly to course player with generated data
-      navigate('/course/preview', {
+      const saveResponse = await supabase.functions.invoke('save-generated-course', {
+        body: { course: courseToSave }
+      });
+
+      if (saveResponse.error) {
+        console.error('Error saving course:', saveResponse.error);
+        toast.error('Erreur lors de la sauvegarde, mais vous pouvez continuer');
+      }
+
+      const savedCourseId = saveResponse.data?.courseId || 'preview';
+      
+      // Navigate to course player with saved course ID
+      navigate(`/course/${savedCourseId}`, {
         state: {
           generatedCourse: {
-            id: 'preview',
+            id: savedCourseId,
             title: generatedCourse.title,
             description: generatedCourse.description,
             category: generatedCourse.category,
@@ -132,6 +159,10 @@ export default function CreatorStudio() {
           }
         }
       });
+      
+      if (saveResponse.data?.courseId) {
+        toast.success('Cours généré et sauvegardé !');
+      }
       
     } catch (error) {
       console.error('Error generating course:', error);
