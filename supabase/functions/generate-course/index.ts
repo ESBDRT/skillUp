@@ -57,43 +57,53 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    // Calculate number of cards based on daily minutes
-    // Assuming ~1 minute per card on average
-    const cardCount = Math.max(5, Math.min(20, dailyMinutes));
-    
-    // Determine card distribution
-    const infoCards = Math.floor(cardCount * 0.5);
-    const quizCards = Math.floor(cardCount * 0.25);
-    const flashcardCards = Math.floor(cardCount * 0.15);
-    const sliderCards = Math.max(1, cardCount - infoCards - quizCards - flashcardCards);
+    // Calculate structure based on daily minutes
+    // More content sections for longer courses
+    const contentSections = dailyMinutes <= 5 ? 2 : dailyMinutes <= 10 ? 3 : dailyMinutes <= 15 ? 4 : 5;
+    const quizQuestions = Math.max(2, Math.floor(dailyMinutes / 4));
+    const flashcards = Math.max(1, Math.floor(dailyMinutes / 5));
 
-    const systemPrompt = `Tu es un expert pédagogue spécialisé dans la création de micro-cours éducatifs gamifiés. 
-Tu crées des cours engageants avec des cartes variées pour un apprentissage efficace.
+    const systemPrompt = `Tu es un expert pédagogue spécialisé dans la création de cours éducatifs approfondis. 
+Tu crées des cours avec du contenu riche et détaillé, suivis d'exercices pour valider les connaissances.
 
 Niveau de difficulté : ${levelNames[level]}
 ${levelInstructions[level]}
 
-IMPORTANT:
+STRUCTURE OBLIGATOIRE DU COURS :
+1. D'ABORD : Toutes les cartes d'INFORMATION (contenu éducatif approfondi)
+2. ENSUITE : Les FLASHCARDS pour mémoriser les points clés
+3. ENFIN : Les QUIZ pour valider les connaissances
+
+IMPORTANT POUR LES CARTES D'INFORMATION :
+- Chaque carte info doit contenir un PARAGRAPHE COMPLET de 4-8 phrases
+- Le contenu doit être riche, détaillé et éducatif
+- Inclus des exemples concrets, des chiffres, des faits intéressants
+- Utilise des émojis pour structurer et illustrer le contenu
+- Chaque carte doit couvrir UN aspect spécifique du sujet en profondeur
+- Le tout doit former une leçon cohérente quand lu dans l'ordre
+
+IMPORTANT :
 - Le contenu doit être en français
-- Chaque carte doit être concise mais informative
 - Les quiz doivent avoir exactement 4 options avec une seule bonne réponse
-- Les flashcards doivent avoir une question courte au recto et une réponse claire au verso
-- Les sliders doivent utiliser une échelle numérique cohérente
-- Le contenu doit être factuel et éducatif`;
+- Les flashcards doivent avoir un terme/concept au recto et une définition claire au verso
+- Les quiz doivent tester ce qui a été enseigné dans les cartes info`;
 
-    const userPrompt = `Crée un cours complet sur le thème suivant : "${theme}"
+    const userPrompt = `Crée un cours COMPLET et APPROFONDI sur le thème : "${theme}"
 
-Le cours doit contenir exactement ${cardCount} cartes avec cette répartition :
-- ${infoCards} cartes d'information (type: "info")
-- ${quizCards} cartes de quiz à choix multiples (type: "quiz")
-- ${flashcardCards} cartes mémoire/flashcard (type: "flashcard")
-- ${sliderCards} cartes avec slider numérique (type: "slider")
+STRUCTURE EXACTE À SUIVRE :
+1. ${contentSections} CARTES D'INFORMATION (type: "info") - C'est le cœur du cours !
+   Chaque carte doit contenir un paragraphe riche de 4-8 phrases expliquant en détail un aspect du sujet.
+   
+2. ${flashcards} FLASHCARDS (type: "flashcard") - Pour mémoriser les concepts clés
 
-Pour chaque type de carte :
-- INFO : Texte explicatif de 2-4 phrases, peut inclure des émojis pour illustrer
-- QUIZ : Question + 4 options dont une seule correcte (correctIndex: 0-3)
-- FLASHCARD : Question/terme au recto, explication au verso
-- SLIDER : Question avec réponse numérique, min/max/correct/unit`;
+3. ${quizQuestions} QUIZ (type: "quiz") - Pour valider les connaissances acquises
+
+ORDRE OBLIGATOIRE : Toutes les infos d'abord, puis les flashcards, puis les quiz.
+
+Exemple de contenu info de qualité :
+"Le sommeil paradoxal, aussi appelé REM (Rapid Eye Movement), représente environ 20-25% de notre temps de sommeil total. 🧠 Durant cette phase, notre cerveau est extrêmement actif - presque autant qu'en état d'éveil ! C'est pendant le sommeil paradoxal que nous rêvons le plus intensément. Les scientifiques ont découvert que cette phase est cruciale pour la consolidation de la mémoire et l'apprentissage. 💡 Fait fascinant : nos muscles sont temporairement paralysés pendant le REM pour nous empêcher d'agir nos rêves."
+
+Crée un cours de ce niveau de qualité sur "${theme}".`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -139,7 +149,7 @@ Pour chaque type de carte :
                       properties: {
                         type: {
                           type: 'string',
-                          enum: ['info', 'quiz', 'flashcard', 'slider']
+                          enum: ['info', 'quiz', 'flashcard']
                         },
                         title: {
                           type: 'string',
@@ -147,12 +157,12 @@ Pour chaque type de carte :
                         },
                         content: {
                           type: 'string',
-                          description: 'Contenu principal de la carte'
+                          description: 'Contenu principal de la carte. Pour les cartes INFO: paragraphe riche de 4-8 phrases. Pour les QUIZ: la question.'
                         },
                         options: {
                           type: 'array',
                           items: { type: 'string' },
-                          description: 'Options pour les quiz (4 options)'
+                          description: 'Options pour les quiz (4 options exactement)'
                         },
                         correctIndex: {
                           type: 'number',
@@ -160,20 +170,11 @@ Pour chaque type de carte :
                         },
                         flashcardBack: {
                           type: 'string',
-                          description: 'Verso de la flashcard'
-                        },
-                        sliderConfig: {
-                          type: 'object',
-                          properties: {
-                            min: { type: 'number' },
-                            max: { type: 'number' },
-                            correct: { type: 'number' },
-                            unit: { type: 'string' }
-                          }
+                          description: 'Verso de la flashcard avec la définition/explication'
                         },
                         xpReward: {
                           type: 'number',
-                          description: 'Points XP (10 pour info, 15 pour quiz/flashcard, 20 pour slider)'
+                          description: 'Points XP (15 pour info, 20 pour flashcard, 25 pour quiz)'
                         }
                       },
                       required: ['type', 'title', 'content', 'xpReward']
