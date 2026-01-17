@@ -72,6 +72,7 @@ function getFallbackImage(keyword: string): string {
 // Generate image using AI or fallback
 async function generateImage(keyword: string, theme: string, supabaseUrl: string, supabaseKey: string): Promise<string> {
   try {
+    console.log(`Generating image for keyword: ${keyword}`);
     const supabase = createClient(supabaseUrl, supabaseKey);
     
     const { data, error } = await supabase.functions.invoke('generate-image', {
@@ -83,7 +84,9 @@ async function generateImage(keyword: string, theme: string, supabaseUrl: string
       return getFallbackImage(keyword);
     }
     
-    return data?.imageUrl || data?.fallbackUrl || getFallbackImage(keyword);
+    const imageUrl = data?.imageUrl || data?.fallbackUrl || getFallbackImage(keyword);
+    console.log(`Image result for ${keyword}: ${imageUrl?.substring(0, 50)}...`);
+    return imageUrl;
   } catch (e) {
     console.error('Failed to generate image:', e);
     return getFallbackImage(keyword);
@@ -412,18 +415,24 @@ RÉPONDS UNIQUEMENT avec un JSON valide dans ce format exact, sans aucun texte a
     const cards: any[] = [];
 
     // Generate images in parallel for all sections
-    const imagePromises = limitedSections.map((section: any) => 
-      generateImage(section.imageKeyword || theme, theme, SUPABASE_URL, SUPABASE_ANON_KEY)
-    );
+    console.log(`Starting image generation for ${limitedSections.length} slides`);
+    const imagePromises = limitedSections.map((section: any, idx: number) => {
+      const keyword = section.imageKeyword || theme;
+      console.log(`[Slide ${idx + 1}] Image keyword: ${keyword}`);
+      return generateImage(keyword, theme, SUPABASE_URL, SUPABASE_ANON_KEY);
+    });
     const imageUrls = await Promise.all(imagePromises);
+    console.log(`Image generation complete. Results:`, imageUrls.map(u => u?.substring(0, 40)));
 
     // Each section becomes a separate "info" card (slide)
     limitedSections.forEach((section: any, index: number) => {
+      const imgUrl = imageUrls[index];
+      console.log(`[Card ${index}] Adding with image: ${imgUrl?.substring(0, 50)}`);
       cards.push({
         type: 'info',
         title: section.title,
         content: section.content,
-        image_url: imageUrls[index],
+        image_url: imgUrl,
         xpReward: 15
       });
     });
