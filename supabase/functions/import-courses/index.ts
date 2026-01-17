@@ -1,4 +1,4 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -49,7 +49,7 @@ interface ImportResult {
 // POC User ID - matches the one in src/lib/constants.ts
 const POC_USER_ID = "00000000-0000-0000-0000-000000000001";
 
-Deno.serve(async (req) => {
+serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -162,13 +162,14 @@ Deno.serve(async (req) => {
         result.cardsImported += course.cards.length;
         console.log(`Imported ${course.cards.length} cards for course "${course.title}"`);
 
-      } catch (error) {
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
         result.errors.push({
           courseIndex: i,
           courseTitle: course.title || `Course ${i + 1}`,
-          error: error.message
+          error: errorMessage
         });
-        console.error(`Error importing course ${i}: ${error.message}`);
+        console.error(`Error importing course ${i}: ${errorMessage}`);
       }
     }
 
@@ -184,10 +185,11 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error) {
-    console.error('Import error:', error);
+  } catch (err) {
+    console.error('Import error:', err);
+    const errorMessage = err instanceof Error ? err.message : 'Import failed';
     return new Response(
-      JSON.stringify({ error: error.message || 'Import failed' }),
+      JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
