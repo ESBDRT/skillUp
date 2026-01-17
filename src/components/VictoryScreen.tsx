@@ -1,15 +1,44 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Trophy, Zap, Clock, ArrowRight } from 'lucide-react';
+import { Trophy, Zap, Clock, ArrowRight, Upload, X } from 'lucide-react';
 import { Lesson } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 interface VictoryScreenProps {
   lesson: Lesson;
   earnedXP: number;
   onClose: () => void;
+  isPreview?: boolean;
+  generatedCourse?: {
+    title: string;
+    description?: string;
+    category: string;
+    icon: string;
+    level: string;
+    estimatedMinutes: number;
+    totalXP: number;
+    cards: any[];
+  };
 }
 
-const VictoryScreen = ({ lesson, earnedXP, onClose }: VictoryScreenProps) => {
+const VictoryScreen = ({ lesson, earnedXP, onClose, isPreview, generatedCourse }: VictoryScreenProps) => {
+  const [isPublishing, setIsPublishing] = useState(false);
+
+  const handlePublish = async () => {
+    if (!generatedCourse) return;
+    
+    setIsPublishing(true);
+    try {
+      // TODO: Save to database when auth is implemented
+      toast.success(`Cours "${generatedCourse.title}" publié avec succès !`);
+      onClose();
+    } catch (error) {
+      toast.error("Erreur lors de la publication");
+    } finally {
+      setIsPublishing(false);
+    }
+  };
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6">
       <motion.div
@@ -72,15 +101,36 @@ const VictoryScreen = ({ lesson, earnedXP, onClose }: VictoryScreenProps) => {
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.5 }}
-        className="w-full max-w-sm"
+        className="w-full max-w-sm space-y-3"
       >
-        <Button
-          onClick={onClose}
-          className="w-full h-14 text-lg font-semibold rounded-2xl gradient-primary"
-        >
-          Continuer
-          <ArrowRight className="w-5 h-5 ml-2" />
-        </Button>
+        {isPreview ? (
+          <>
+            <Button
+              onClick={handlePublish}
+              disabled={isPublishing}
+              className="w-full h-14 text-lg font-semibold rounded-2xl gradient-primary"
+            >
+              {isPublishing ? 'Publication...' : 'Publier ce cours'}
+              <Upload className="w-5 h-5 ml-2" />
+            </Button>
+            <Button
+              onClick={onClose}
+              variant="outline"
+              className="w-full h-12 text-base font-medium rounded-2xl"
+            >
+              <X className="w-4 h-4 mr-2" />
+              Abandonner
+            </Button>
+          </>
+        ) : (
+          <Button
+            onClick={onClose}
+            className="w-full h-14 text-lg font-semibold rounded-2xl gradient-primary"
+          >
+            Continuer
+            <ArrowRight className="w-5 h-5 ml-2" />
+          </Button>
+        )}
       </motion.div>
     </div>
   );

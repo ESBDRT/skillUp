@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
-import { mockLessons } from '@/data/mockData';
+import { mockLessons, Lesson } from '@/data/mockData';
 import { useUser } from '@/context/UserContext';
 import StoryProgress from '@/components/StoryProgress';
 import InfoCard from '@/components/cards/InfoCard';
@@ -17,14 +17,36 @@ import { X, Volume2, MessageCircle } from 'lucide-react';
 const CoursePlayer = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { addXP, completeLesson, addMinutes } = useUser();
   
-  const lesson = mockLessons.find(l => l.id === courseId);
+  // Check if we have a generated course from state
+  const generatedCourse = location.state?.generatedCourse;
+  
+  // Use generated course if available, otherwise find from mock data
+  const lesson: Lesson | undefined = generatedCourse 
+    ? {
+        id: generatedCourse.id,
+        title: generatedCourse.title,
+        description: generatedCourse.description || '',
+        category: generatedCourse.category,
+        icon: generatedCourse.icon,
+        level: generatedCourse.level,
+        totalXP: generatedCourse.totalXP,
+        estimatedMinutes: generatedCourse.estimatedMinutes,
+        cards: generatedCourse.cards,
+        isCompleted: false,
+        isLocked: false,
+      }
+    : mockLessons.find(l => l.id === courseId);
+    
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [earnedXP, setEarnedXP] = useState(0);
   const [showXPPopup, setShowXPPopup] = useState(false);
   const [xpAmount, setXpAmount] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
+  
+  const isPreview = !!generatedCourse;
 
   if (!lesson) {
     return (
@@ -96,7 +118,9 @@ const CoursePlayer = () => {
       <VictoryScreen 
         lesson={lesson} 
         earnedXP={earnedXP} 
-        onClose={() => navigate('/dashboard')} 
+        onClose={() => navigate('/dashboard')}
+        isPreview={isPreview}
+        generatedCourse={generatedCourse}
       />
     );
   }
