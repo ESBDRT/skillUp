@@ -42,17 +42,130 @@ const levelNames = {
   expert: 'Expert'
 };
 
-// Get image from Unsplash (no API key required)
-function getUnsplashImage(keyword: string): string {
-  const cleanKeyword = keyword.trim().replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, ',');
-  return `https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=600&fit=crop&q=80`;
+// Search for relevant image using Perplexity
+async function searchImageWithPerplexity(keyword: string, apiKey: string): Promise<string | null> {
+  try {
+    console.log(`Searching image for: ${keyword}`);
+    const response = await fetch('https://api.perplexity.ai/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'sonar',
+        messages: [{
+          role: 'user',
+          content: `Find ONE high-quality, royalty-free image URL for: "${keyword}". 
+Return ONLY the direct image URL (ending in .jpg, .png, .webp), nothing else. 
+Prefer Unsplash, Pexels, or Pixabay images. The URL must be a direct link to the image file.`
+        }]
+      })
+    });
+
+    if (!response.ok) {
+      console.error('Perplexity API error:', response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
+    
+    // Extract URL from response
+    const urlMatch = content.match(/https?:\/\/[^\s"'<>]+\.(jpg|jpeg|png|webp|gif)[^\s"'<>]*/i);
+    if (urlMatch) {
+      console.log(`Found image URL: ${urlMatch[0]}`);
+      return urlMatch[0];
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error searching image with Perplexity:', error);
+    return null;
+  }
 }
 
-// Get a themed image from Unsplash Source API
-function getThemedImage(keyword: string, index: number): string {
+// Fallback: Get image from Unsplash collections
+function getUnsplashFallback(keyword: string, index: number): string {
+  // Use Unsplash Source API with keywords
   const keywords = encodeURIComponent(keyword.toLowerCase().replace(/[^a-zA-Z0-9\s]/g, ''));
-  // Use different seed for each image to get variety
   return `https://source.unsplash.com/800x600/?${keywords}&sig=${index}`;
+}
+
+// Get themed image - try Perplexity first, fallback to Unsplash
+async function getThemedImage(keyword: string, index: number, perplexityKey: string | undefined): Promise<string> {
+  if (perplexityKey) {
+    const perplexityImage = await searchImageWithPerplexity(keyword, perplexityKey);
+    if (perplexityImage) {
+      return perplexityImage;
+    }
+  }
+  
+  // Fallback to Unsplash
+  return getUnsplashFallback(keyword, index);
+}
+
+// Ensure varied question types in the generated quiz
+function ensureVariedQuestionTypes(questions: any[]): any[] {
+  if (!questions || questions.length === 0) return questions;
+  
+  const typeCount: Record<string, number> = {
+    'quiz': 0,
+    'open-question': 0,
+    'flashcard': 0,
+    'slider': 0
+  };
+  
+  // Count existing types
+  questions.forEach(q => {
+    const type = q.type || 'quiz';
+    typeCount[type] = (typeCount[type] || 0) + 1;
+  });
+  
+  console.log('Question type distribution:', typeCount);
+  
+  // If all questions are quiz type and we have at least 3, convert some
+  if (typeCount['quiz'] === questions.length && questions.length >= 3) {
+    console.log('All questions are quiz type, converting for variety...');
+    
+    // Convert 2nd question to open-question
+    if (questions[1]) {
+      const correctAnswer = questions[1].options?.[questions[1].correctIndex] || 'Réponse attendue';
+      questions[1] = {
+        type: 'open-question',
+        question: questions[1].question,
+        expectedAnswer: `${correctAnswer}. Expliquez votre raisonnement en développant les points clés.`
+      };
+    }
+    
+    // Convert 3rd question to flashcard
+    if (questions[2]) {
+      const answer = questions[2].options?.[questions[2].correctIndex] || 'Définition';
+      questions[2] = {
+        type: 'flashcard',
+        question: questions[2].question,
+        answer: answer
+      };
+    }
+    
+    // Convert 4th question to slider if exists
+    if (questions[3] && questions[3].options) {
+      // Try to create a meaningful slider from the question
+      questions[3] = {
+        type: 'slider',
+        question: `Estimez l'importance de : ${questions[3].question.replace('?', '')}`,
+        sliderConfig: {
+          min: 0,
+          max: 100,
+          correct: 75,
+          unit: '%',
+          description: 'Déplacez le curseur pour donner votre estimation'
+        }
+      };
+    }
+  }
+  
+  return questions;
 }
 
 serve(async (req) => {
@@ -66,15 +179,21 @@ serve(async (req) => {
     console.log(`Generating course: theme="${theme}", minutes=${dailyMinutes}, level=${level}, knownKeywords=${knownKeywords?.length || 0}`);
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const PERPLEXITY_API_KEY = Deno.env.get('PERPLEXITY');
     
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
+    
+    if (PERPLEXITY_API_KEY) {
+      console.log('Perplexity API key available for image search');
+    } else {
+      console.log('Perplexity API key not found, using Unsplash fallback');
+    }
 
     // Calculate structure based on daily minutes
-    // More sections = more slides, better granularity
     const sectionCount = dailyMinutes <= 5 ? 4 : dailyMinutes <= 10 ? 6 : dailyMinutes <= 15 ? 8 : 10;
-    const quizCount = Math.max(3, Math.floor(dailyMinutes / 3));
+    const quizCount = Math.max(4, Math.floor(dailyMinutes / 2.5)); // More questions for variety
 
     const knownConceptsInstruction = knownKeywords && knownKeywords.length > 0
       ? `\n\nIMPORTANT - ADAPTATION AU NIVEAU DE L'APPRENANT :
@@ -94,7 +213,9 @@ Tu dois créer un VRAI COURS structuré en SLIDES INDIVIDUELLES :
 - Chaque section = 1 slide séparée avec un concept clair
 - Contenu concis mais riche (3-5 phrases par slide max)
 - Progression logique entre les slides
-- Variété dans les types de tests
+- VARIÉTÉ OBLIGATOIRE dans les types de tests
+
+RÈGLE CRITIQUE : Tu DOIS utiliser TOUS les types de questions demandés, pas seulement des QCM !
 
 Le contenu doit être en français, éducatif, engageant et bien structuré.`;
 
@@ -108,26 +229,30 @@ STRUCTURE DU COURS EN SLIDES :
    - content: Explication claire (3-5 phrases, ~100 mots max)
    - imageKeyword: 2-3 mots anglais pour l'image (ex: "brain neurons", "coffee beans")
 
-2. TESTS VARIÉS (${quizCount} questions de TYPES DIFFÉRENTS) :
-   OBLIGATOIRE - Utilise ces types dans l'ordre :
+2. TESTS VARIÉS - EXACTEMENT ${quizCount} QUESTIONS avec ces types OBLIGATOIRES :
+
+   ⚠️ DISTRIBUTION IMPOSÉE :
+   - 2 questions de type "quiz" (QCM classique)
+   - 1 question de type "open-question" (réponse argumentée)
+   - 1 question de type "flashcard" (carte mémoire)
+   - ${quizCount - 4 > 0 ? `${quizCount - 4} question(s) supplémentaire(s) (slider ou quiz)` : ''}
+
+   FORMATS EXACTS :
    
-   a) "quiz" (QCM) - 2 questions minimum :
+   a) type "quiz" (QCM) :
       { "type": "quiz", "question": "...", "options": ["A", "B", "C", "D"], "correctIndex": 0 }
    
-   b) "open-question" (réponse argumentée) - 1 question :
-      { "type": "open-question", "question": "...", "expectedAnswer": "Réponse type attendue en 2-3 phrases" }
+   b) type "open-question" (réflexion) :
+      { "type": "open-question", "question": "Expliquez en détail...", "expectedAnswer": "Réponse type en 2-3 phrases développées" }
    
-   c) "flashcard" (carte mémoire) - 1 carte :
-      { "type": "flashcard", "question": "Concept clé à retenir", "answer": "Définition ou explication" }
+   c) type "flashcard" (mémorisation) :
+      { "type": "flashcard", "question": "Qu'est-ce que [concept] ?", "answer": "Définition complète du concept" }
    
-   d) "slider" (estimation) - 1 question si pertinent :
-      { "type": "slider", "question": "Quelle estimation pour...?", "sliderConfig": { "min": 0, "max": 100, "correct": 42, "unit": "%" } }
+   d) type "slider" (estimation numérique) :
+      { "type": "slider", "question": "Quel pourcentage/nombre pour...?", "sliderConfig": { "min": 0, "max": 100, "correct": 42, "unit": "%" } }
 
-IMPORTANT :
-- Chaque slide = 1 concept = contenu COURT et PRÉCIS
-- Les slides sont SÉPARÉES, pas un long texte
-- Utilise TOUS les types de tests demandés
-- Les imageKeyword doivent être simples et en anglais`;
+⚠️ ATTENTION : NE PAS générer uniquement des QCM ! La variété des types est OBLIGATOIRE.
+Les imageKeyword doivent être simples et en anglais (2-3 mots max).`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -146,7 +271,7 @@ IMPORTANT :
             type: 'function',
             function: {
               name: 'create_course',
-              description: 'Crée un cours éducatif structuré en slides avec tests variés',
+              description: 'Crée un cours éducatif structuré en slides avec tests variés (quiz, open-question, flashcard, slider)',
               parameters: {
                 type: 'object',
                 properties: {
@@ -190,14 +315,14 @@ IMPORTANT :
                   },
                   quizQuestions: {
                     type: 'array',
-                    description: 'Questions de test de types variés',
+                    description: 'Questions de test - DOIT inclure: 2 quiz, 1 open-question, 1 flashcard minimum',
                     items: {
                       type: 'object',
                       properties: {
                         type: {
                           type: 'string',
                           enum: ['quiz', 'open-question', 'flashcard', 'slider'],
-                          description: 'Type de question'
+                          description: 'Type de question - VARIER les types!'
                         },
                         question: {
                           type: 'string',
@@ -206,19 +331,19 @@ IMPORTANT :
                         options: {
                           type: 'array',
                           items: { type: 'string' },
-                          description: 'Options pour QCM (4 choix)'
+                          description: 'Options pour QCM (4 choix) - uniquement pour type quiz'
                         },
                         correctIndex: {
                           type: 'number',
-                          description: 'Index de la bonne réponse pour QCM (0-3)'
+                          description: 'Index de la bonne réponse pour QCM (0-3) - uniquement pour type quiz'
                         },
                         answer: {
                           type: 'string',
-                          description: 'Réponse pour flashcard'
+                          description: 'Réponse pour flashcard - uniquement pour type flashcard'
                         },
                         expectedAnswer: {
                           type: 'string',
-                          description: 'Réponse attendue pour question ouverte'
+                          description: 'Réponse attendue développée - uniquement pour type open-question'
                         },
                         sliderConfig: {
                           type: 'object',
@@ -228,7 +353,7 @@ IMPORTANT :
                             correct: { type: 'number' },
                             unit: { type: 'string' }
                           },
-                          description: 'Configuration pour slider'
+                          description: 'Configuration pour slider - uniquement pour type slider'
                         }
                       },
                       required: ['type', 'question']
@@ -330,8 +455,9 @@ RÉPONDS UNIQUEMENT avec un JSON valide dans ce format exact, sans aucun texte a
   ],
   "quizQuestions": [
     {"type": "quiz", "question": "Question?", "options": ["A", "B", "C", "D"], "correctIndex": 0},
-    {"type": "open-question", "question": "Question ouverte?", "expectedAnswer": "Réponse attendue"},
-    {"type": "flashcard", "question": "Concept", "answer": "Définition"}
+    {"type": "quiz", "question": "Question 2?", "options": ["A", "B", "C", "D"], "correctIndex": 1},
+    {"type": "open-question", "question": "Question ouverte?", "expectedAnswer": "Réponse attendue développée"},
+    {"type": "flashcard", "question": "Concept", "answer": "Définition complète"}
   ]
 }`
             }
@@ -360,17 +486,29 @@ RÉPONDS UNIQUEMENT avec un JSON valide dans ce format exact, sans aucun texte a
       throw new Error('Impossible de générer le cours. Veuillez réessayer.');
     }
 
+    // Ensure varied question types
+    courseData.quizQuestions = ensureVariedQuestionTypes(courseData.quizQuestions);
+
     // Build the cards array - EACH SECTION IS A SEPARATE CARD (SLIDE)
     const cards: any[] = [];
+    const totalSlides = courseData.lessonSections.length;
 
     // Each section becomes a separate "info" card (slide)
+    // Process images in parallel for better performance
+    const imagePromises = courseData.lessonSections.map((section: any, index: number) =>
+      getThemedImage(section.imageKeyword || theme, index, PERPLEXITY_API_KEY)
+    );
+    
+    const imageUrls = await Promise.all(imagePromises);
+
     courseData.lessonSections.forEach((section: any, index: number) => {
-      const imageUrl = getThemedImage(section.imageKeyword || theme, index);
       cards.push({
         type: 'info',
         title: section.title,
         content: section.content,
-        image_url: imageUrl,
+        image_url: imageUrls[index],
+        slideNumber: index + 1,
+        totalSlides: totalSlides,
         xpReward: 15
       });
     });
@@ -469,7 +607,7 @@ RÉPONDS UNIQUEMENT avec un JSON valide dans ce format exact, sans aucun texte a
   } catch (error) {
     console.error('Error generating course:', error);
     return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : 'Erreur lors de la génération du cours' 
+      error: error instanceof Error ? error.message : 'Une erreur est survenue lors de la génération du cours' 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
