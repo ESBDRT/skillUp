@@ -343,8 +343,8 @@ const Landing = () => {
             y: -20
           }} transition={{
             duration: 0.3
-          }} className="grid md:grid-cols-3 gap-6 items-start">
-              {content.pricing.map((plan, index) => <PricingCard key={index} {...plan} index={index} />)}
+          }} className="grid md:grid-cols-3 gap-6 items-stretch">
+              {content.pricing.map((plan, index) => <PricingCard key={index} {...plan} index={index} isMiddle={index === 1} />)}
             </motion.div>
           </AnimatePresence>
         </div>
