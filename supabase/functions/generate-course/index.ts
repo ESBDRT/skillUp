@@ -94,12 +94,14 @@ serve(async (req) => {
     // If we have a course plan, use it to guide generation
     const hasPlan = coursePlan && coursePlan.days && coursePlan.days.length > 0;
     
-    // Calculate total concepts from plan or estimate
+    // Calculate total concepts from plan or estimate - REDUCED for better balance
+    // Fewer info slides, more tests = more engaging
     const totalConcepts = hasPlan 
       ? coursePlan.days.reduce((sum, day) => sum + day.concepts.length, 0)
-      : (dailyMinutes <= 5 ? 4 : dailyMinutes <= 10 ? 6 : dailyMinutes <= 15 ? 8 : 10);
+      : (dailyMinutes <= 5 ? 3 : dailyMinutes <= 10 ? 4 : dailyMinutes <= 15 ? 5 : 6);
     
-    const quizCount = Math.max(3, Math.floor(totalConcepts / 2));
+    // More quizzes per info slide for better engagement (roughly 1:1 ratio)
+    const quizCount = Math.max(4, totalConcepts);
 
     const knownConceptsInstruction = knownKeywords && knownKeywords.length > 0
       ? `\n\nIMPORTANT - ADAPTATION AU NIVEAU DE L'APPRENANT :
