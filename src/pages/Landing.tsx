@@ -8,6 +8,8 @@ import TestimonialCard from '@/components/landing/TestimonialCard';
 import PricingCard from '@/components/landing/PricingCard';
 import FAQItem from '@/components/landing/FAQItem';
 import LanguageToggle from '@/components/landing/LanguageToggle';
+import { ThemeToggle } from '@/components/landing/ThemeToggle';
+import { UseCaseCard } from '@/components/landing/UseCaseCard';
 import { translations, type Language, type PlanType } from '@/data/landingTranslations';
 
 const Landing = () => {
@@ -48,6 +50,7 @@ const Landing = () => {
             <span className="text-xl font-bold text-foreground">MicroLearn</span>
           </div>
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <LanguageToggle language={language} onToggle={setLanguage} />
             <Button onClick={() => navigate('/dashboard')} className="shadow-lg shadow-primary/20">
               {t.header.cta} <ArrowRight className="w-4 h-4 ml-2" />
@@ -113,6 +116,43 @@ const Landing = () => {
           >
             {planType === 'individual' ? t.hero.individualDesc : t.hero.companyDesc}
           </motion.p>
+        </div>
+      </section>
+
+      {/* Use Cases Section */}
+      <section className="relative py-24 px-6">
+        <div className="max-w-6xl mx-auto relative z-10">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`usecases-header-${planType}-${language}`}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="text-center mb-16"
+            >
+              <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-4">
+                {planType === 'individual' ? t.useCases.individualTitle : t.useCases.companyTitle}
+              </h2>
+              <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
+                {planType === 'individual' ? t.useCases.individualSubtitle : t.useCases.companySubtitle}
+              </p>
+            </motion.div>
+          </AnimatePresence>
+          
+          <AnimatePresence mode="wait">
+            <motion.div 
+              key={`usecases-${planType}-${language}`}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+              className="grid md:grid-cols-3 gap-6"
+            >
+              {content.useCases.map((useCase, index) => (
+                <UseCaseCard key={index} {...useCase} index={index} />
+              ))}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </section>
 
