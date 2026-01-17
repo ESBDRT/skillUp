@@ -408,7 +408,7 @@ const CoursePlayer = () => {
       case 'slider':
         return <SliderCard card={currentCard} onComplete={handleCardComplete} />;
       case 'open-question':
-        return <OpenQuestionCard card={currentCard} onComplete={handleCardComplete} />;
+        return <OpenQuestionCard card={currentCard} onComplete={handleCardComplete} onNext={handleNext} />;
       case 'lesson':
         return <LessonCard card={currentCard} onComplete={handleCardComplete} />;
       default:

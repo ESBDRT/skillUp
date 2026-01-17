@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import ReactMarkdown from 'react-markdown';
 import { Card } from '@/data/mockData';
 
 interface InfoCardProps {
@@ -20,7 +21,7 @@ const InfoCard = ({ card, slideNumber, totalSlides }: InfoCardProps) => {
     }
     // Fallback to placeholder.com with theme color
     const keyword = encodeURIComponent(card.title.substring(0, 20));
-    return `https://via.placeholder.com/800x600/6366f1/ffffff?text=${keyword}`;
+    return `https://placehold.co/800x600/6366f1/ffffff?text=${keyword}`;
   };
 
   const handleImageError = () => {
@@ -48,6 +49,20 @@ const InfoCard = ({ card, slideNumber, totalSlides }: InfoCardProps) => {
     if (title.includes('voiture') || title.includes('car') || title.includes('nos')) return '🚗';
     if (title.includes('moteur') || title.includes('engine')) return '⚙️';
     return '📚';
+  };
+
+  // Format content for better markdown display
+  const formatContent = (content: string) => {
+    if (!content) return '';
+    
+    // If content doesn't have markdown, add line breaks after sentences for better readability
+    if (!content.includes('\n') && !content.includes('**') && !content.includes('- ')) {
+      // Split on sentence endings and rejoin with double line breaks
+      return content
+        .replace(/\. ([A-ZÀ-ÿ])/g, '.\n\n$1')  // Add line break after sentences
+        .replace(/: ([A-ZÀ-ÿ])/g, ':\n\n$1');  // Add line break after colons
+    }
+    return content;
   };
 
   const imageUrl = getImageUrl();
@@ -92,12 +107,29 @@ const InfoCard = ({ card, slideNumber, totalSlides }: InfoCardProps) => {
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.1 }}
-        className="flex-1 flex flex-col"
+        className="flex-1 flex flex-col overflow-y-auto"
       >
         <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-3 leading-tight">{card.title}</h2>
-        <p className="text-base sm:text-lg text-muted-foreground leading-relaxed whitespace-pre-line flex-1">
-          {card.content}
-        </p>
+        <div className="text-base sm:text-lg text-muted-foreground leading-relaxed flex-1 prose prose-sm dark:prose-invert max-w-none">
+          <ReactMarkdown
+            components={{
+              p: ({ children }) => <p className="mb-3 text-muted-foreground">{children}</p>,
+              strong: ({ children }) => <strong className="text-foreground font-semibold">{children}</strong>,
+              em: ({ children }) => <em className="text-primary">{children}</em>,
+              ul: ({ children }) => <ul className="list-disc list-inside space-y-1 mb-3">{children}</ul>,
+              ol: ({ children }) => <ol className="list-decimal list-inside space-y-1 mb-3">{children}</ol>,
+              li: ({ children }) => <li className="text-muted-foreground">{children}</li>,
+              h3: ({ children }) => <h3 className="text-lg font-semibold text-foreground mt-4 mb-2">{children}</h3>,
+              blockquote: ({ children }) => (
+                <blockquote className="border-l-4 border-primary pl-4 italic text-muted-foreground my-3">
+                  {children}
+                </blockquote>
+              ),
+            }}
+          >
+            {formatContent(card.content)}
+          </ReactMarkdown>
+        </div>
       </motion.div>
 
       {/* Navigation hint */}
