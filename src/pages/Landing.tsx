@@ -52,11 +52,23 @@ const Landing = () => {
           <div className="absolute bottom-0 left-[90%] w-1.5 h-1.5 rounded-full bg-primary/25 animate-float-up" style={{ animationDelay: '16s' }} />
         </div>
         
-        {/* Shimmer line accent */}
-        <div className="absolute top-[30%] left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent animate-shimmer bg-[length:200%_100%]" />
-        
-        {/* Subtle grid pattern */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--border)/0.3)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border)/0.3)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,black_70%,transparent_110%)]" />
+        {/* Moving lines */}
+        <div className="absolute inset-0">
+          {/* Horizontal flowing lines */}
+          <div className="absolute top-[20%] left-0 w-[200px] h-px bg-gradient-to-r from-transparent via-primary/25 to-transparent animate-line-h" style={{ animationDelay: '0s' }} />
+          <div className="absolute top-[45%] left-0 w-[300px] h-px bg-gradient-to-r from-transparent via-purple-500/20 to-transparent animate-line-h" style={{ animationDelay: '4s' }} />
+          <div className="absolute top-[70%] left-0 w-[250px] h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent animate-line-h" style={{ animationDelay: '8s' }} />
+          
+          {/* Vertical flowing lines */}
+          <div className="absolute top-0 left-[25%] w-px h-[150px] bg-gradient-to-b from-transparent via-primary/20 to-transparent animate-line-v" style={{ animationDelay: '2s' }} />
+          <div className="absolute top-0 left-[60%] w-px h-[200px] bg-gradient-to-b from-transparent via-purple-500/15 to-transparent animate-line-v" style={{ animationDelay: '6s' }} />
+          <div className="absolute top-0 left-[85%] w-px h-[180px] bg-gradient-to-b from-transparent via-primary/15 to-transparent animate-line-v" style={{ animationDelay: '10s' }} />
+          
+          {/* Pulsing accent lines */}
+          <div className="absolute top-[35%] left-[10%] w-[100px] h-px bg-gradient-to-r from-primary/30 to-transparent animate-line-pulse origin-left" />
+          <div className="absolute top-[55%] right-[10%] w-[120px] h-px bg-gradient-to-l from-purple-500/25 to-transparent animate-line-pulse origin-right animation-delay-2000" />
+          <div className="absolute top-[80%] left-[30%] w-[80px] h-px bg-gradient-to-r from-primary/20 to-transparent animate-line-pulse origin-left animation-delay-4000" />
+        </div>
       </div>
 
       {/* Header */}
