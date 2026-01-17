@@ -83,6 +83,15 @@ RÈGLES pour keywords :
       const errorText = await response.text();
       console.error('AI Gateway error:', response.status, errorText);
       
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ 
+          error: 'Crédits IA insuffisants. Veuillez recharger votre compte dans Paramètres → Workspace → Usage.' 
+        }), {
+          status: 402,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      
       if (response.status === 429) {
         return new Response(JSON.stringify({ 
           error: 'Limite de requêtes atteinte. Réessayez dans quelques instants.' 
