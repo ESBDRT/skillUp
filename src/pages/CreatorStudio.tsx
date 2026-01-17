@@ -98,29 +98,38 @@ export default function CreatorStudio() {
 
       const generatedCourse: GeneratedCourse = await response.json();
       
-      // Populate the form with generated data
-      setCourseTitle(generatedCourse.title);
-      setCourseDescription(generatedCourse.description || '');
-      setCourseCategory(generatedCourse.category);
-      setCourseIcon(generatedCourse.icon);
-      setCourseLevel(generatedCourse.level);
-      setEstimatedMinutes(generatedCourse.estimated_minutes);
-      
-      // Convert cards to internal format
-      const formattedCards: CourseCard[] = generatedCourse.cards.map((card, index) => ({
+      // Convert cards to the format expected by CoursePlayer
+      const formattedCards = generatedCourse.cards.map((card, index) => ({
         id: `card-${Date.now()}-${index}`,
         type: card.type,
         title: card.title,
         content: card.content,
-        options: card.options,
-        correctIndex: card.correctIndex,
+        options: card.options?.map((opt, i) => ({
+          id: `opt-${i}`,
+          text: opt,
+          isCorrect: i === card.correctIndex
+        })),
         flashcardBack: card.flashcardBack,
         sliderConfig: card.sliderConfig,
         xpReward: card.xpReward || 10,
       }));
       
-      setCards(formattedCards);
-      toast.success(`Cours "${generatedCourse.title}" généré avec succès !`);
+      // Navigate directly to course player with generated data
+      navigate('/course/preview', {
+        state: {
+          generatedCourse: {
+            id: 'preview',
+            title: generatedCourse.title,
+            description: generatedCourse.description,
+            category: generatedCourse.category,
+            icon: generatedCourse.icon,
+            level: generatedCourse.level,
+            estimatedMinutes: generatedCourse.estimated_minutes,
+            totalXP: generatedCourse.total_xp,
+            cards: formattedCards,
+          }
+        }
+      });
       
     } catch (error) {
       console.error('Error generating course:', error);
