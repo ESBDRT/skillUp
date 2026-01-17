@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
-import { mockLessons, Lesson } from '@/data/mockData';
+import { mockLessons, Lesson, Card } from '@/data/mockData';
 import { useUser } from '@/context/UserContext';
 import { supabase } from '@/integrations/supabase/client';
 import { POC_USER_ID } from '@/lib/constants';
@@ -38,7 +38,14 @@ const CoursePlayer = () => {
   const cardsStartIndex = location.state?.cardsStartIndex ?? 0;
   const cardsEndIndex = location.state?.cardsEndIndex;
   
-  // Use generated course if available, otherwise find from mock data
+  // State for loading course from DB
+  const [dbCourse, setDbCourse] = useState<Lesson | null>(null);
+  const [isLoadingCourse, setIsLoadingCourse] = useState(false);
+  
+  // Determine the lesson source
+  const mockLesson = mockLessons.find(l => l.id === courseId);
+  
+  // Use generated course if available, otherwise find from mock data or DB
   const lesson: Lesson | undefined = generatedCourse 
     ? {
         id: generatedCourse.id,
@@ -53,7 +60,122 @@ const CoursePlayer = () => {
         isCompleted: false,
         isLocked: false,
       }
-    : mockLessons.find(l => l.id === courseId);
+    : mockLesson || dbCourse || undefined;
+  
+  // Load course from database if not found in mock data
+  useEffect(() => {
+    const loadCourseFromDB = async () => {
+      if (!courseId || generatedCourse || mockLesson) return;
+      
+      setIsLoadingCourse(true);
+      try {
+        console.log('Loading course from DB:', courseId);
+        
+        // Fetch course details
+        const { data: course, error: courseError } = await supabase
+          .from('courses')
+          .select('*')
+          .eq('id', courseId)
+          .single();
+        
+        if (courseError) {
+          console.error('Error fetching course:', courseError);
+          return;
+        }
+        
+        // Fetch course cards
+        const { data: cards, error: cardsError } = await supabase
+          .from('course_cards')
+          .select('*')
+          .eq('course_id', courseId)
+          .order('order_index');
+        
+        if (cardsError) {
+          console.error('Error fetching cards:', cardsError);
+          return;
+        }
+        
+        console.log(`Loaded course with ${cards?.length || 0} cards`);
+        
+        // Transform cards to the expected format
+        const transformedCards: Card[] = (cards || []).map(card => {
+          const baseCard = {
+            id: card.id,
+            type: card.type as Card['type'],
+            title: card.title,
+            content: card.content,
+            xpReward: card.xp_reward,
+            image: card.image_url || undefined,
+          };
+          
+          // Handle different card types
+          if (card.type === 'quiz' && card.options) {
+            const optionsData = typeof card.options === 'string' 
+              ? JSON.parse(card.options) 
+              : card.options;
+            
+            return {
+              ...baseCard,
+              options: (optionsData.options || []).map((opt: string, i: number) => ({
+                id: `opt-${i}`,
+                text: opt,
+                isCorrect: i === optionsData.correctIndex,
+              })),
+            };
+          }
+          
+          if (card.type === 'flashcard') {
+            return {
+              ...baseCard,
+              flashcardBack: card.flashcard_back || '',
+            };
+          }
+          
+          if (card.type === 'slider' && card.slider_config) {
+            const sliderConfig = typeof card.slider_config === 'string'
+              ? JSON.parse(card.slider_config)
+              : card.slider_config;
+            return {
+              ...baseCard,
+              sliderConfig: sliderConfig,
+            };
+          }
+          
+          if (card.type === 'open-question') {
+            return {
+              ...baseCard,
+              expectedAnswer: card.flashcard_back || '',
+            };
+          }
+          
+          return baseCard;
+        });
+        
+        // Build the lesson object
+        const loadedLesson: Lesson = {
+          id: course.id,
+          title: course.title,
+          description: course.description || '',
+          category: course.category,
+          icon: course.icon || '📚',
+          level: course.level as 'beginner' | 'intermediate' | 'expert',
+          totalXP: course.total_xp,
+          estimatedMinutes: course.estimated_minutes,
+          cards: transformedCards,
+          isCompleted: false,
+          isLocked: false,
+        };
+        
+        setDbCourse(loadedLesson);
+      } catch (error) {
+        console.error('Error loading course:', error);
+      } finally {
+        setIsLoadingCourse(false);
+      }
+    };
+    
+    loadCourseFromDB();
+  }, [courseId, generatedCourse, mockLesson]);
   
   // Filter cards for session if session indices are provided
   const sessionCards = lesson?.cards 
@@ -90,7 +212,6 @@ const CoursePlayer = () => {
   const saveProgress = async (showToast = true) => {
     if (!generatedCourse) return;
 
-    // Use the POC user ID for all tests
     const userId = POC_USER_ID;
 
     setIsSaving(true);
@@ -106,7 +227,6 @@ const CoursePlayer = () => {
       };
 
       if (progressId) {
-        // Update existing progress
         const { error } = await supabase
           .from('course_progress')
           .update(progressData)
@@ -114,7 +234,6 @@ const CoursePlayer = () => {
 
         if (error) throw error;
       } else {
-        // Create new progress
         const { data, error } = await supabase
           .from('course_progress')
           .upsert(progressData, { onConflict: 'user_id,course_id' })
@@ -145,6 +264,18 @@ const CoursePlayer = () => {
     navigate('/dashboard');
   };
 
+  // Show loading state while fetching from DB
+  if (isLoadingCourse) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Chargement du cours...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!lesson) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -171,10 +302,9 @@ const CoursePlayer = () => {
   };
 
   // Add concept to memory after completing a card
-  const saveConceptToMemory = useCallback(async (card: typeof currentCard) => {
+  const saveConceptToMemory = async (card: typeof currentCard) => {
     if (!card || !courseId) return;
     
-    // Only save info, lesson, and flashcard cards as concepts
     if (['info', 'lesson', 'flashcard'].includes(card.type)) {
       try {
         await addConcept(courseId, card.title, card.content);
@@ -182,31 +312,28 @@ const CoursePlayer = () => {
         console.error('Error saving concept:', error);
       }
     }
-  }, [courseId, addConcept]);
+  };
 
-  const handleXPGain = useCallback((amount: number) => {
+  const handleXPGain = (amount: number) => {
     setXpAmount(amount);
     setShowXPPopup(true);
     setEarnedXP(prev => prev + amount);
     setCompletedCards(prev => new Set([...prev, currentCardIndex]));
     addXP(amount);
     
-    // Save concept to memory
     saveConceptToMemory(currentCard);
     
     setTimeout(() => setShowXPPopup(false), 1500);
-  }, [addXP, currentCardIndex, currentCard, saveConceptToMemory]);
+  };
 
-  const handleNext = useCallback(async () => {
+  const handleNext = async () => {
     if (currentCardIndex < cardsToPlay.length - 1) {
       setCurrentCardIndex(prev => prev + 1);
     } else {
-      // Session/Course complete!
       setIsComplete(true);
       completeLesson(lesson.id);
       addMinutes(lesson.estimatedMinutes);
       
-      // Mark session as complete if in session mode
       if (isSessionMode && sessionId) {
         try {
           await completeSession(sessionId, earnedXP);
@@ -215,7 +342,6 @@ const CoursePlayer = () => {
         }
       }
       
-      // Mark as complete in database (for full course progress)
       if (progressId) {
         supabase
           .from('course_progress')
@@ -224,7 +350,6 @@ const CoursePlayer = () => {
           .then(() => {});
       }
       
-      // Fire confetti!
       confetti({
         particleCount: 100,
         spread: 70,
@@ -232,21 +357,20 @@ const CoursePlayer = () => {
         colors: ['#4F46E5', '#10B981', '#F59E0B'],
       });
     }
-  }, [currentCardIndex, cardsToPlay.length, lesson, completeLesson, addMinutes, progressId, isSessionMode, sessionId, earnedXP, completeSession]);
+  };
 
-  const handlePrev = useCallback(() => {
+  const handlePrev = () => {
     if (currentCardIndex > 0) {
       setCurrentCardIndex(prev => prev - 1);
     }
-  }, [currentCardIndex]);
+  };
 
-  const handleTap = useCallback((e: React.MouseEvent) => {
+  const handleTap = (e: React.MouseEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const isRightSide = x > rect.width / 2;
 
     if (isRightSide) {
-      // Only auto-advance for info cards
       if (currentCard.type === 'info') {
         handleXPGain(currentCard.xpReward);
         handleNext();
@@ -254,12 +378,12 @@ const CoursePlayer = () => {
     } else {
       handlePrev();
     }
-  }, [currentCard, handleNext, handlePrev, handleXPGain]);
+  };
 
-  const handleCardComplete = useCallback((xp: number) => {
+  const handleCardComplete = (xp: number) => {
     handleXPGain(xp);
     setTimeout(handleNext, 500);
-  }, [handleXPGain, handleNext]);
+  };
 
   if (isComplete) {
     return (
@@ -274,6 +398,8 @@ const CoursePlayer = () => {
   }
 
   const renderCard = () => {
+    if (!currentCard) return null;
+    
     switch (currentCard.type) {
       case 'info':
         return <InfoCard card={currentCard} />;
@@ -309,7 +435,6 @@ const CoursePlayer = () => {
             total={cardsToPlay.length} 
           />
 
-          {/* Save button for generated courses */}
           {isPreview && (
             <button
               onClick={() => saveProgress(true)}
@@ -345,12 +470,10 @@ const CoursePlayer = () => {
           </motion.div>
         </AnimatePresence>
 
-        {/* XP Popup */}
         <AnimatePresence>
           {showXPPopup && <XPPopup amount={xpAmount} />}
         </AnimatePresence>
 
-        {/* Tap hints */}
         <div className="absolute inset-0 pointer-events-none flex">
           <div className="w-1/2 flex items-center justify-start pl-2">
             <motion.div
@@ -373,10 +496,8 @@ const CoursePlayer = () => {
         </div>
       </main>
 
-      {/* Audio Player */}
       <AudioPlayer text={getCardTextContent()} />
 
-      {/* Bottom Actions */}
       <footer className="px-4 py-4 border-t border-border bg-card safe-bottom">
         <div className="flex items-center justify-end">
           <button className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full hover:bg-primary/20 transition-colors">
