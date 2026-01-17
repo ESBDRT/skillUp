@@ -126,6 +126,14 @@
   html {
     font-family: 'Inter', system-ui, sans-serif;
     -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+    font-size: 16px;
+  }
+
+  @media (max-width: 375px) {
+    html {
+      font-size: 14px;
+    }
   }
 
   /* Smooth theme transition - comprehensive */
@@ -228,6 +236,52 @@
 
   .progress-segment-complete {
     @apply bg-primary;
+  }
+
+  /* Touch target utilities - minimum 44px for accessibility */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  .touch-target-lg {
+    @apply min-h-[56px] min-w-[56px];
+  }
+
+  /* Responsive text utilities */
+  .text-responsive-sm {
+    @apply text-xs sm:text-sm;
+  }
+
+  .text-responsive-base {
+    @apply text-sm sm:text-base;
+  }
+
+  .text-responsive-lg {
+    @apply text-base sm:text-lg;
+  }
+
+  .text-responsive-xl {
+    @apply text-lg sm:text-xl;
+  }
+
+  .text-responsive-2xl {
+    @apply text-xl sm:text-2xl;
+  }
+
+  /* Mobile scroll improvements */
+  .scroll-touch {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+
+  /* Hide scrollbar but allow scroll */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }
 
