@@ -41,46 +41,122 @@ const levelNames = {
   expert: 'Expert'
 };
 
-// Generate image using Lovable AI
-async function generateImage(prompt: string, apiKey: string): Promise<string | null> {
+// Search for a relevant image using Perplexity
+async function searchWebImage(query: string, perplexityKey: string): Promise<string | null> {
   try {
-    console.log(`Generating image for: ${prompt.substring(0, 50)}...`);
+    console.log(`Searching image for: ${query.substring(0, 50)}...`);
     
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${perplexityKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-image-preview',
-        messages: [
-          {
-            role: 'user',
-            content: `Create a clean, educational illustration for a course: ${prompt}. Style: modern, minimalist, professional, suitable for educational content. No text in the image.`
-          }
-        ],
-        modalities: ['image', 'text']
+        model: 'sonar',
+        messages: [{
+          role: 'user',
+          content: `Find me a high-quality, free-to-use image URL for: "${query}". 
+          Search on Unsplash (images.unsplash.com) or Pexels (images.pexels.com).
+          Return ONLY the direct image URL starting with https://images.unsplash.com/ or https://images.pexels.com/, nothing else. No explanation, just the URL.`
+        }]
       })
     });
 
     if (!response.ok) {
-      console.error('Image generation failed:', response.status);
+      console.error('Perplexity image search failed:', response.status);
       return null;
     }
 
     const data = await response.json();
-    const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    const content = data.choices?.[0]?.message?.content || '';
     
-    if (imageUrl) {
-      console.log('Image generated successfully');
-      return imageUrl;
+    // Extract URL from the response
+    const urlMatch = content.match(/(https:\/\/images\.(unsplash|pexels)\.com\/[^\s"'<>]+)/i);
+    if (urlMatch) {
+      console.log('Image found:', urlMatch[1].substring(0, 60));
+      return urlMatch[1];
+    }
+    
+    // Fallback: try to extract any image URL
+    const anyImageMatch = content.match(/(https:\/\/[^\s"'<>]+\.(jpg|jpeg|png|webp))/i);
+    if (anyImageMatch) {
+      console.log('Fallback image found:', anyImageMatch[1].substring(0, 60));
+      return anyImageMatch[1];
     }
     
     return null;
   } catch (error) {
-    console.error('Error generating image:', error);
+    console.error('Error searching image:', error);
     return null;
+  }
+}
+
+// Search for learning resources using Perplexity
+async function searchResources(theme: string, perplexityKey: string): Promise<any> {
+  try {
+    console.log(`Searching resources for: ${theme}`);
+    
+    const response = await fetch('https://api.perplexity.ai/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${perplexityKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'sonar',
+        messages: [{
+          role: 'user',
+          content: `Pour apprendre "${theme}", trouve-moi des ressources de qualité :
+          - 2-3 vidéos YouTube (tutoriels, cours, documentaires)
+          - 1-2 repos GitHub populaires et pertinents (si applicable au sujet)
+          - 2-3 articles ou sites de référence
+
+          IMPORTANT: Retourne UNIQUEMENT un JSON valide avec ce format exact, sans aucun texte avant ou après :
+          {
+            "youtube": [{"title": "titre exact de la vidéo", "url": "https://youtube.com/watch?v=...", "source": "nom de la chaîne"}],
+            "github": [{"title": "nom-du-repo", "url": "https://github.com/...", "description": "courte description"}],
+            "articles": [{"title": "titre de l'article", "url": "https://...", "source": "nom du site"}]
+          }
+          
+          Les URLs doivent être de vraies URLs existantes et fonctionnelles.`
+        }]
+      })
+    });
+
+    if (!response.ok) {
+      console.error('Perplexity resources search failed:', response.status);
+      return { youtube: [], github: [], articles: [] };
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
+    
+    // Try to extract JSON from the response
+    try {
+      // Find JSON in the response
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        console.log('Resources found:', {
+          youtube: parsed.youtube?.length || 0,
+          github: parsed.github?.length || 0,
+          articles: parsed.articles?.length || 0
+        });
+        return {
+          youtube: parsed.youtube || [],
+          github: parsed.github || [],
+          articles: parsed.articles || []
+        };
+      }
+    } catch (parseError) {
+      console.error('Failed to parse resources JSON:', parseError);
+    }
+    
+    return { youtube: [], github: [], articles: [] };
+  } catch (error) {
+    console.error('Error searching resources:', error);
+    return { youtube: [], github: [], articles: [] };
   }
 }
 
@@ -95,8 +171,14 @@ serve(async (req) => {
     console.log(`Generating course: theme="${theme}", minutes=${dailyMinutes}, level=${level}`);
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const PERPLEXITY_API_KEY = Deno.env.get('PERPLEXITY_API_KEY');
+    
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
+    }
+    
+    if (!PERPLEXITY_API_KEY) {
+      throw new Error('PERPLEXITY_API_KEY is not configured');
     }
 
     // Calculate structure based on daily minutes
@@ -125,7 +207,7 @@ STRUCTURE DU COURS (comme un PDF/document) :
    Une seule carte "lesson" contenant ${sectionCount} SECTIONS, chaque section avec :
    - Un titre de section clair
    - Un contenu riche de 2-3 paragraphes (chaque paragraphe = 4-6 phrases)
-   - Une description d'image pour illustrer (imagePrompt)
+   - Un mot-clé pour l'image (imageKeyword) : 2-3 mots décrivant une image pertinente
    
    Les sections doivent couvrir le sujet de manière progressive et complète.
 
@@ -137,7 +219,7 @@ IMPORTANT :
 - Utilise des exemples concrets, des chiffres, des faits intéressants
 - Les transitions entre sections doivent être fluides
 - Chaque section doit approfondir un aspect différent du sujet
-- Les imagePrompt doivent décrire des schémas/illustrations éducatives pertinentes`;
+- Les imageKeyword doivent être simples : "sunset ocean", "brain neurons", "coffee beans"`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -190,12 +272,12 @@ IMPORTANT :
                           type: 'string',
                           description: 'Contenu détaillé de la section (2-3 paragraphes, chaque paragraphe séparé par deux retours à la ligne)'
                         },
-                        imagePrompt: {
+                        imageKeyword: {
                           type: 'string',
-                          description: 'Description de l\'image/schéma à générer pour illustrer cette section'
+                          description: 'Mot-clé simple pour rechercher une image (2-3 mots en anglais)'
                         }
                       },
-                      required: ['title', 'content', 'imagePrompt']
+                      required: ['title', 'content', 'imageKeyword']
                     }
                   },
                   quizQuestions: {
@@ -266,30 +348,37 @@ IMPORTANT :
 
     const courseData = JSON.parse(toolCall.function.arguments);
     
-    // Generate images for each section (in parallel for speed)
-    console.log('Generating images for sections...');
+    // Search for images and resources in parallel
+    console.log('Searching images and resources via Perplexity...');
+    
     const imagePromises = courseData.lessonSections.map((section: any) => 
-      generateImage(section.imagePrompt, LOVABLE_API_KEY)
+      searchWebImage(section.imageKeyword || section.title, PERPLEXITY_API_KEY)
     );
-    const images = await Promise.all(imagePromises);
+    const resourcesPromise = searchResources(theme, PERPLEXITY_API_KEY);
+    
+    const [images, resources] = await Promise.all([
+      Promise.all(imagePromises),
+      resourcesPromise
+    ]);
 
-    // Build the lesson sections with generated images
+    // Build the lesson sections with web images
     const sections = courseData.lessonSections.map((section: any, index: number) => ({
       id: `section-${index}`,
       title: section.title,
       content: section.content,
-      imagePrompt: section.imagePrompt,
+      imageKeyword: section.imageKeyword,
       imageUrl: images[index] || null
     }));
 
     // Build the cards array
     const cards = [
-      // Main lesson card with all sections
+      // Main lesson card with all sections and resources
       {
         type: 'lesson',
         title: courseData.title,
         content: courseData.description,
         sections: sections,
+        resources: resources,
         xpReward: 50
       },
       // Quiz cards
@@ -316,7 +405,7 @@ IMPORTANT :
       cards: cards
     };
 
-    console.log(`Course generated: "${result.title}" with ${sections.length} sections and ${courseData.quizQuestions.length} quiz questions`);
+    console.log(`Course generated: "${result.title}" with ${sections.length} sections, ${courseData.quizQuestions.length} quiz questions, and resources`);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

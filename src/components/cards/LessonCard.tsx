@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, CheckCircle2 } from 'lucide-react';
-import { Card, LessonSection } from '@/data/mockData';
+import { BookOpen, CheckCircle2, ArrowRight, Youtube, Github, ExternalLink, FileText } from 'lucide-react';
+import { Card, LessonSection, Resources } from '@/data/mockData';
+import { Button } from '@/components/ui/button';
 
 interface LessonCardProps {
   card: Card;
@@ -26,6 +27,7 @@ const LessonCard = ({ card, onComplete }: LessonCardProps) => {
   const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
   
   const sections = card.sections || [];
+  const resources = card.resources;
 
   // Track which sections have been scrolled into view
   useEffect(() => {
@@ -50,13 +52,136 @@ const LessonCard = ({ card, onComplete }: LessonCardProps) => {
     return () => observer.disconnect();
   }, [sections.length]);
 
-  // Complete when all sections are read
+  // Mark as completed when all sections are read (but don't auto-transition)
   useEffect(() => {
     if (readSections.size === sections.length && sections.length > 0 && !hasCompleted) {
       setHasCompleted(true);
-      onComplete(card.xpReward);
+      // Don't call onComplete automatically - wait for button click
     }
-  }, [readSections.size, sections.length, hasCompleted, onComplete, card.xpReward]);
+  }, [readSections.size, sections.length, hasCompleted]);
+
+  const handleStartQuiz = () => {
+    onComplete(card.xpReward);
+  };
+
+  const renderResourceSection = (resources: Resources) => {
+    const hasResources = resources.youtube?.length || resources.github?.length || resources.articles?.length;
+    
+    if (!hasResources) return null;
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        className="mt-12 pt-8 border-t border-border"
+      >
+        <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-foreground">
+          <ExternalLink className="w-5 h-5 text-primary" />
+          Ressources pour aller plus loin
+        </h3>
+
+        {/* YouTube Videos */}
+        {resources.youtube && resources.youtube.length > 0 && (
+          <div className="mb-6">
+            <h4 className="flex items-center gap-2 text-red-500 font-medium mb-3">
+              <Youtube className="w-4 h-4" /> Vidéos YouTube
+            </h4>
+            <div className="grid gap-3">
+              {resources.youtube.map((video, idx) => (
+                <a
+                  key={idx}
+                  href={video.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors group"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center flex-shrink-0">
+                    <Youtube className="w-5 h-5 text-red-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-foreground truncate group-hover:text-primary transition-colors">
+                      {video.title}
+                    </p>
+                    {video.source && (
+                      <p className="text-sm text-muted-foreground truncate">{video.source}</p>
+                    )}
+                  </div>
+                  <ExternalLink className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* GitHub Repos */}
+        {resources.github && resources.github.length > 0 && (
+          <div className="mb-6">
+            <h4 className="flex items-center gap-2 text-foreground font-medium mb-3">
+              <Github className="w-4 h-4" /> Repos GitHub
+            </h4>
+            <div className="grid gap-3">
+              {resources.github.map((repo, idx) => (
+                <a
+                  key={idx}
+                  href={repo.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors group"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-foreground/10 flex items-center justify-center flex-shrink-0">
+                    <Github className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-foreground truncate group-hover:text-primary transition-colors">
+                      {repo.title}
+                    </p>
+                    {repo.description && (
+                      <p className="text-sm text-muted-foreground truncate">{repo.description}</p>
+                    )}
+                  </div>
+                  <ExternalLink className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Articles */}
+        {resources.articles && resources.articles.length > 0 && (
+          <div className="mb-6">
+            <h4 className="flex items-center gap-2 text-blue-500 font-medium mb-3">
+              <FileText className="w-4 h-4" /> Articles & Sites
+            </h4>
+            <div className="grid gap-3">
+              {resources.articles.map((article, idx) => (
+                <a
+                  key={idx}
+                  href={article.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors group"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                    <FileText className="w-5 h-5 text-blue-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-foreground truncate group-hover:text-primary transition-colors">
+                      {article.title}
+                    </p>
+                    {article.source && (
+                      <p className="text-sm text-muted-foreground truncate">{article.source}</p>
+                    )}
+                  </div>
+                  <ExternalLink className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+      </motion.div>
+    );
+  };
 
   const renderSection = (section: LessonSection, index: number) => {
     const layout = getLayoutStyle(index, !!section.imageUrl);
@@ -261,20 +386,31 @@ const LessonCard = ({ card, onComplete }: LessonCardProps) => {
       >
         {sections.map((section, index) => renderSection(section, index))}
         
-        {/* End of course indicator */}
+        {/* Resources Section */}
+        {resources && renderResourceSection(resources)}
+        
+        {/* Quiz Button - appears when course is completed */}
         {hasCompleted && (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             className="flex flex-col items-center justify-center py-8 text-center"
           >
-            <div className="w-16 h-16 rounded-full bg-success/20 flex items-center justify-center mb-4">
-              <CheckCircle2 className="w-8 h-8 text-success" />
+            <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mb-4">
+              <CheckCircle2 className="w-8 h-8 text-green-500" />
             </div>
             <h3 className="text-lg font-bold text-foreground mb-2">Cours terminé !</h3>
-            <p className="text-sm text-muted-foreground">
-              Swipez à droite pour passer au quiz →
+            <p className="text-sm text-muted-foreground mb-6">
+              Prêt à tester vos connaissances ?
             </p>
+            <Button 
+              onClick={handleStartQuiz}
+              size="lg"
+              className="gap-2"
+            >
+              Passer au Quiz
+              <ArrowRight className="w-4 h-4" />
+            </Button>
           </motion.div>
         )}
       </div>
