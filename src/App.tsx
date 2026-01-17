@@ -11,6 +11,7 @@ import CreatorStudio from "./pages/CreatorStudio";
 import Brain from "./pages/Brain";
 import Explore from "./pages/Explore";
 import SmartSession from "./pages/SmartSession";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/brain" element={<Brain />} />
             <Route path="/explore" element={<Explore />} />
             <Route path="/smart-session" element={<SmartSession />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
