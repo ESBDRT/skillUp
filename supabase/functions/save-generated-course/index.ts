@@ -38,6 +38,8 @@ interface GeneratedCourse {
   level: string;
   estimatedMinutes: number;
   totalXP: number;
+  durationDays?: number;
+  dailyCardsCount?: number;
   cards: CourseCard[];
 }
 
@@ -61,6 +63,9 @@ serve(async (req) => {
 
     console.log(`Saving course: ${course.title}`);
 
+    const durationDays = course.durationDays || 1;
+    const dailyCardsCount = course.dailyCardsCount || Math.ceil(course.cards.length / durationDays);
+
     // 1. Insert the course
     const { data: courseData, error: courseError } = await supabase
       .from('courses')
@@ -74,6 +79,8 @@ serve(async (req) => {
         estimated_minutes: course.estimatedMinutes || 10,
         total_xp: course.totalXP || 0,
         is_published: false,
+        duration_days: durationDays,
+        daily_cards_count: dailyCardsCount,
       })
       .select()
       .single();
@@ -122,11 +129,52 @@ serve(async (req) => {
 
     console.log(`${cardsToInsert.length} cards inserted successfully`);
 
+    // 3. Create sessions for the course
+    const totalCards = cardsToInsert.length;
+    const sessionsToCreate = [];
+    const today = new Date();
+
+    for (let day = 0; day < durationDays; day++) {
+      const sessionDate = new Date(today);
+      sessionDate.setDate(sessionDate.getDate() + day);
+
+      const startIndex = day * dailyCardsCount;
+      const endIndex = Math.min((day + 1) * dailyCardsCount - 1, totalCards - 1);
+
+      // Only create session if there are cards for this day
+      if (startIndex < totalCards) {
+        sessionsToCreate.push({
+          user_id: POC_USER_ID,
+          course_id: courseData.id,
+          scheduled_date: sessionDate.toISOString().split('T')[0],
+          session_number: day + 1,
+          cards_start_index: startIndex,
+          cards_end_index: endIndex,
+          is_completed: false,
+          earned_xp: 0,
+        });
+      }
+    }
+
+    if (sessionsToCreate.length > 0) {
+      const { error: sessionsError } = await supabase
+        .from('course_sessions')
+        .insert(sessionsToCreate);
+
+      if (sessionsError) {
+        console.error('Error creating sessions:', sessionsError);
+        // Don't rollback - course is still usable without sessions
+      } else {
+        console.log(`${sessionsToCreate.length} sessions created successfully`);
+      }
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
         courseId: courseData.id,
-        message: `Course "${course.title}" saved with ${cardsToInsert.length} cards`
+        sessionsCreated: sessionsToCreate.length,
+        message: `Course "${course.title}" saved with ${cardsToInsert.length} cards and ${sessionsToCreate.length} sessions`
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

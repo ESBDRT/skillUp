@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, Loader2, BookOpen, Clock, GraduationCap, AlertCircle, CheckCircle2, Lightbulb, X } from 'lucide-react';
+import { Sparkles, Loader2, BookOpen, Clock, GraduationCap, AlertCircle, CheckCircle2, Lightbulb, X, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,9 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-
 interface AIGenerationFormProps {
-  onGenerate: (theme: string, minutes: number, level: 'beginner' | 'intermediate' | 'expert', knownKeywords?: string[]) => void;
+  onGenerate: (theme: string, minutes: number, level: 'beginner' | 'intermediate' | 'expert', durationDays: number, knownKeywords?: string[]) => void;
   isGenerating: boolean;
 }
 
@@ -33,6 +32,14 @@ const minutesOptions = [
   { value: 20, label: '20 min/jour', description: 'Cours complet' },
 ];
 
+const durationOptions = [
+  { value: 3, label: '3 jours', description: 'Introduction rapide' },
+  { value: 5, label: '5 jours', description: 'Cours court' },
+  { value: 7, label: '7 jours', description: 'Une semaine' },
+  { value: 14, label: '14 jours', description: 'Approfondi' },
+  { value: 30, label: '30 jours', description: 'Maîtrise complète' },
+];
+
 const levelOptions = [
   { value: 'beginner' as const, label: 'Notions', color: 'bg-emerald-500', description: 'Vocabulaire simple, concepts de base' },
   { value: 'intermediate' as const, label: 'Intermédiaire', color: 'bg-amber-500', description: 'Approfondissement, nuances' },
@@ -43,6 +50,7 @@ export function AIGenerationForm({ onGenerate, isGenerating }: AIGenerationFormP
   const [theme, setTheme] = useState('');
   const [selectedMinutes, setSelectedMinutes] = useState(10);
   const [selectedLevel, setSelectedLevel] = useState<'beginner' | 'intermediate' | 'expert'>('beginner');
+  const [selectedDuration, setSelectedDuration] = useState(5);
   
   // Theme analysis state
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -123,7 +131,7 @@ export function AIGenerationForm({ onGenerate, isGenerating }: AIGenerationFormP
       const knownKeywords = analysis?.keywords
         .filter(k => selectedKeywords.has(k.id))
         .map(k => k.label) || [];
-      onGenerate(theme.trim(), selectedMinutes, selectedLevel, knownKeywords);
+      onGenerate(theme.trim(), selectedMinutes, selectedLevel, selectedDuration, knownKeywords);
     }
   };
 
@@ -210,6 +218,36 @@ export function AIGenerationForm({ onGenerate, isGenerating }: AIGenerationFormP
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Course Duration */}
+      <div className="space-y-3">
+        <Label className="flex items-center gap-2 text-base font-medium">
+          <CalendarDays className="w-4 h-4" />
+          Durée du cours
+        </Label>
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+          {durationOptions.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setSelectedDuration(option.value)}
+              disabled={isGenerating}
+              className={cn(
+                "p-3 rounded-xl border-2 transition-all text-left",
+                selectedDuration === option.value
+                  ? "border-primary bg-primary/10"
+                  : "border-border hover:border-primary/50"
+              )}
+            >
+              <div className="font-semibold text-sm">{option.label}</div>
+              <div className="text-xs text-muted-foreground">{option.description}</div>
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          📅 Environ {Math.ceil((selectedMinutes * selectedDuration) / 5)} cartes réparties sur {selectedDuration} sessions
+        </p>
       </div>
 
       {/* Difficulty Level */}

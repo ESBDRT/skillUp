@@ -12,6 +12,7 @@ import Brain from "./pages/Brain";
 import Explore from "./pages/Explore";
 import SmartSession from "./pages/SmartSession";
 import Profile from "./pages/Profile";
+import Planning from "./pages/Planning";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
             <Route path="/explore" element={<Explore />} />
             <Route path="/smart-session" element={<SmartSession />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/planning" element={<Planning />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

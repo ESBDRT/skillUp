@@ -79,7 +79,7 @@ export default function CreatorStudio() {
   const [cards, setCards] = useState<CourseCard[]>([]);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
 
-  const handleAIGenerate = async (theme: string, minutes: number, level: 'beginner' | 'intermediate' | 'expert', knownKeywords?: string[]) => {
+  const handleAIGenerate = async (theme: string, minutes: number, level: 'beginner' | 'intermediate' | 'expert', durationDays: number, knownKeywords?: string[]) => {
     setIsGenerating(true);
     setMode('ai');
 
@@ -90,7 +90,7 @@ export default function CreatorStudio() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ theme, dailyMinutes: minutes, level, knownKeywords }),
+        body: JSON.stringify({ theme, dailyMinutes: minutes, level, durationDays, knownKeywords }),
       });
 
       if (!response.ok) {
@@ -126,6 +126,8 @@ export default function CreatorStudio() {
         level: generatedCourse.level,
         estimatedMinutes: generatedCourse.estimated_minutes,
         totalXP: generatedCourse.total_xp,
+        durationDays: durationDays,
+        dailyCardsCount: Math.ceil(formattedCards.length / durationDays),
         cards: formattedCards,
       };
 

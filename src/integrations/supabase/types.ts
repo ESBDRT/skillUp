@@ -106,11 +106,66 @@ export type Database = {
         }
         Relationships: []
       }
+      course_sessions: {
+        Row: {
+          cards_end_index: number
+          cards_start_index: number
+          completed_at: string | null
+          course_id: string
+          created_at: string
+          earned_xp: number
+          id: string
+          is_completed: boolean
+          scheduled_date: string
+          session_number: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cards_end_index?: number
+          cards_start_index?: number
+          completed_at?: string | null
+          course_id: string
+          created_at?: string
+          earned_xp?: number
+          id?: string
+          is_completed?: boolean
+          scheduled_date: string
+          session_number: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cards_end_index?: number
+          cards_start_index?: number
+          completed_at?: string | null
+          course_id?: string
+          created_at?: string
+          earned_xp?: number
+          id?: string
+          is_completed?: boolean
+          scheduled_date?: string
+          session_number?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_sessions_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courses: {
         Row: {
           category: string
           created_at: string
+          daily_cards_count: number
           description: string | null
+          duration_days: number
           estimated_minutes: number
           icon: string | null
           id: string
@@ -124,7 +179,9 @@ export type Database = {
         Insert: {
           category: string
           created_at?: string
+          daily_cards_count?: number
           description?: string | null
+          duration_days?: number
           estimated_minutes?: number
           icon?: string | null
           id?: string
@@ -138,7 +195,9 @@ export type Database = {
         Update: {
           category?: string
           created_at?: string
+          daily_cards_count?: number
           description?: string | null
+          duration_days?: number
           estimated_minutes?: number
           icon?: string | null
           id?: string
@@ -193,6 +252,42 @@ export type Database = {
           next_review_at?: string | null
           repetitions?: number | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_profiles: {
+        Row: {
+          created_at: string
+          daily_goal_minutes: number
+          id: string
+          last_activity_date: string | null
+          level: number
+          streak_count: number
+          updated_at: string
+          user_id: string
+          xp: number
+        }
+        Insert: {
+          created_at?: string
+          daily_goal_minutes?: number
+          id?: string
+          last_activity_date?: string | null
+          level?: number
+          streak_count?: number
+          updated_at?: string
+          user_id: string
+          xp?: number
+        }
+        Update: {
+          created_at?: string
+          daily_goal_minutes?: number
+          id?: string
+          last_activity_date?: string | null
+          level?: number
+          streak_count?: number
+          updated_at?: string
+          user_id?: string
+          xp?: number
         }
         Relationships: []
       }
