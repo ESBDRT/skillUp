@@ -6,6 +6,7 @@ export interface MemoryConcept {
   id: string;
   user_id: string;
   course_id: string;
+  course_title: string | null;
   concept_title: string;
   concept_content: string | null;
   ease_factor: number;
@@ -15,6 +16,14 @@ export interface MemoryConcept {
   last_reviewed_at: string | null;
   memory_strength: number;
   created_at: string;
+}
+
+export interface MemoryReview {
+  id: string;
+  concept_id: string;
+  user_id: string;
+  quality: number;
+  reviewed_at: string;
 }
 
 // SM-2 Algorithm for spaced repetition
@@ -86,13 +95,38 @@ export const useMemoryConcepts = () => {
 
       if (fetchError) throw fetchError;
 
-      // Update memory strength for each concept
-      const updatedConcepts = (data || []).map(concept => ({
-        ...concept,
-        memory_strength: calculateMemoryStrength(concept.last_reviewed_at, concept.interval_days),
-      }));
+      // Update memory strength for each concept and sync to DB if changed significantly
+      const updatedConcepts: MemoryConcept[] = [];
+      const conceptsToUpdate: { id: string; memory_strength: number }[] = [];
 
-      setConcepts(updatedConcepts as MemoryConcept[]);
+      for (const concept of (data || [])) {
+        const calculatedStrength = calculateMemoryStrength(concept.last_reviewed_at, concept.interval_days);
+        const dbStrength = concept.memory_strength ?? 100;
+        
+        // Only update in DB if difference is significant (>5%)
+        if (Math.abs(calculatedStrength - dbStrength) > 5) {
+          conceptsToUpdate.push({ id: concept.id, memory_strength: calculatedStrength });
+        }
+        
+        updatedConcepts.push({
+          ...concept,
+          memory_strength: calculatedStrength,
+        } as MemoryConcept);
+      }
+
+      // Batch update memory strengths in background
+      if (conceptsToUpdate.length > 0) {
+        Promise.all(
+          conceptsToUpdate.map(({ id, memory_strength }) =>
+            supabase
+              .from('memory_concepts')
+              .update({ memory_strength })
+              .eq('id', id)
+          )
+        ).catch(console.error);
+      }
+
+      setConcepts(updatedConcepts);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -100,23 +134,47 @@ export const useMemoryConcepts = () => {
     }
   }, [userId]);
 
-  const addConcept = async (courseId: string, title: string, content?: string) => {
+  const addConcept = async (courseId: string, title: string, content?: string, courseTitle?: string) => {
     if (!userId) return;
 
-    const { data, error: insertError } = await supabase
-      .from('memory_concepts')
-      .insert({
-        user_id: userId,
-        course_id: courseId,
-        concept_title: title,
-        concept_content: content || null,
-      })
-      .select()
-      .single();
+    // Check if concept already exists (prevent duplicates)
+    const existingConcept = concepts.find(
+      c => c.course_id === courseId && c.concept_title === title
+    );
+    
+    if (existingConcept) {
+      console.log('Concept already exists, skipping:', title);
+      return existingConcept;
+    }
 
-    if (insertError) throw insertError;
-    await fetchConcepts();
-    return data;
+    try {
+      const { data, error: insertError } = await supabase
+        .from('memory_concepts')
+        .insert({
+          user_id: userId,
+          course_id: courseId,
+          concept_title: title,
+          concept_content: content || null,
+          course_title: courseTitle || null,
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        // Handle unique constraint violation
+        if (insertError.code === '23505') {
+          console.log('Duplicate concept prevented by DB constraint');
+          return null;
+        }
+        throw insertError;
+      }
+      
+      await fetchConcepts();
+      return data;
+    } catch (error) {
+      console.error('Error adding concept:', error);
+      return null;
+    }
   };
 
   const updateConceptAfterReview = async (conceptId: string, quality: number) => {
@@ -125,6 +183,7 @@ export const useMemoryConcepts = () => {
 
     const updates = calculateNextReview(quality, concept);
 
+    // Update concept
     const { error: updateError } = await supabase
       .from('memory_concepts')
       .update({
@@ -134,6 +193,16 @@ export const useMemoryConcepts = () => {
       .eq('id', conceptId);
 
     if (updateError) throw updateError;
+
+    // Record the review in history
+    await supabase
+      .from('memory_reviews')
+      .insert({
+        concept_id: conceptId,
+        user_id: userId,
+        quality,
+      });
+
     await fetchConcepts();
   };
 
@@ -161,6 +230,63 @@ export const useMemoryConcepts = () => {
     return Math.round(concepts.reduce((sum, c) => sum + c.memory_strength, 0) / concepts.length);
   }, [concepts]);
 
+  // Group concepts by course
+  const getConceptsByCourse = useCallback(() => {
+    const grouped: Record<string, { courseTitle: string; concepts: MemoryConcept[] }> = {};
+    
+    concepts.forEach(concept => {
+      if (!grouped[concept.course_id]) {
+        grouped[concept.course_id] = {
+          courseTitle: concept.course_title || 'Cours sans nom',
+          concepts: [],
+        };
+      }
+      grouped[concept.course_id].concepts.push(concept);
+    });
+    
+    return grouped;
+  }, [concepts]);
+
+  // Get review history for a concept
+  const getReviewHistory = async (conceptId: string): Promise<MemoryReview[]> => {
+    const { data, error } = await supabase
+      .from('memory_reviews')
+      .select('*')
+      .eq('concept_id', conceptId)
+      .order('reviewed_at', { ascending: false })
+      .limit(10);
+    
+    if (error) {
+      console.error('Error fetching review history:', error);
+      return [];
+    }
+    
+    return (data || []) as MemoryReview[];
+  };
+
+  // Get weekly review stats
+  const getWeeklyStats = useCallback(async () => {
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    
+    const { data, error } = await supabase
+      .from('memory_reviews')
+      .select('*')
+      .eq('user_id', userId)
+      .gte('reviewed_at', oneWeekAgo.toISOString());
+    
+    if (error) {
+      console.error('Error fetching weekly stats:', error);
+      return { totalReviews: 0, correctReviews: 0 };
+    }
+    
+    const reviews = data || [];
+    return {
+      totalReviews: reviews.length,
+      correctReviews: reviews.filter((r: any) => r.quality >= 3).length,
+    };
+  }, [userId]);
+
   useEffect(() => {
     fetchConcepts();
   }, [fetchConcepts]);
@@ -175,6 +301,9 @@ export const useMemoryConcepts = () => {
     getConceptsForReview,
     getAtRiskConcepts,
     getAverageMemoryStrength,
+    getConceptsByCourse,
+    getReviewHistory,
+    getWeeklyStats,
     refetch: fetchConcepts,
   };
 };

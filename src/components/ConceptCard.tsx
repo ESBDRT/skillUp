@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Clock, Trash2, AlertTriangle, CheckCircle, AlertCircle } from 'lucide-react';
+import { Clock, Trash2, AlertTriangle, CheckCircle, AlertCircle, BookOpen } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ interface ConceptCardProps {
   memoryStrength: number;
   lastReviewed: string | null;
   nextReview: string;
+  courseName?: string;
   onDelete?: (id: string) => void;
   onReview?: (id: string) => void;
 }
@@ -22,6 +23,7 @@ const ConceptCard = ({
   memoryStrength,
   lastReviewed,
   nextReview,
+  courseName,
   onDelete,
   onReview,
 }: ConceptCardProps) => {
@@ -55,6 +57,14 @@ const ConceptCard = ({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
+          {/* Course name badge */}
+          {courseName && (
+            <div className="flex items-center gap-1 mb-2">
+              <BookOpen className="w-3 h-3 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground truncate">{courseName}</span>
+            </div>
+          )}
+          
           <div className="flex items-center gap-2 mb-1">
             {getStatusIcon()}
             <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
