@@ -12,7 +12,6 @@ import { ThemeToggle } from '@/components/landing/ThemeToggle';
 import { UseCaseCard } from '@/components/landing/UseCaseCard';
 import CoursePreview from '@/components/landing/CoursePreview';
 import { translations, type Language, type PlanType } from '@/data/landingTranslations';
-
 const Landing = () => {
   const [planType, setPlanType] = useState<PlanType>('individual');
   const [language, setLanguage] = useState<Language>(() => {
@@ -20,16 +19,12 @@ const Landing = () => {
     return (saved === 'fr' ? 'fr' : 'en') as Language;
   });
   const navigate = useNavigate();
-  
   const t = translations[language];
   const content = t.content[planType];
-
   useEffect(() => {
     localStorage.setItem('landing-language', language);
   }, [language]);
-
-  return (
-    <div className="min-h-screen bg-background overflow-hidden">
+  return <div className="min-h-screen bg-background overflow-hidden">
       {/* Depth background layers */}
       <div className="fixed inset-0 pointer-events-none">
         {/* Base gradient */}
@@ -51,7 +46,7 @@ const Landing = () => {
             <div className="w-9 h-9 bg-gradient-to-br from-primary to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
               <Sparkles className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="text-xl font-bold text-foreground">MicroLearn</span>
+            <span className="text-xl font-bold text-foreground">SquizzUp</span>
           </div>
           <div className="flex items-center gap-3">
             <ThemeToggle />
@@ -66,25 +61,37 @@ const Landing = () => {
       {/* Hero Section */}
       <section className="relative pt-36 pb-24 px-6">
         <div className="max-w-4xl mx-auto text-center relative z-10">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5 }}
-            className="inline-block mb-6"
-          >
+          <motion.div initial={{
+          opacity: 0,
+          scale: 0.9
+        }} animate={{
+          opacity: 1,
+          scale: 1
+        }} transition={{
+          duration: 0.5
+        }} className="inline-block mb-6">
             <span className="px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium border border-primary/20">
               ✨ AI-Powered Micro-Learning
             </span>
           </motion.div>
           
           <AnimatePresence mode="wait">
-            <motion.div
-              key={`hero-content-${language}`}
-              initial={{ opacity: 0, y: 15, filter: 'blur(8px)' }}
-              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-              exit={{ opacity: 0, y: -15, filter: 'blur(8px)' }}
-              transition={{ duration: 0.4, ease: 'easeOut' }}
-            >
+            <motion.div key={`hero-content-${language}`} initial={{
+            opacity: 0,
+            y: 15,
+            filter: 'blur(8px)'
+          }} animate={{
+            opacity: 1,
+            y: 0,
+            filter: 'blur(0px)'
+          }} exit={{
+            opacity: 0,
+            y: -15,
+            filter: 'blur(8px)'
+          }} transition={{
+            duration: 0.4,
+            ease: 'easeOut'
+          }}>
               <h1 className="text-5xl md:text-7xl font-extrabold text-foreground mb-6 leading-[1.1] tracking-tight">
                 {t.hero.title}{' '}
                 <span className="bg-gradient-to-r from-primary via-purple-500 to-primary bg-clip-text text-transparent bg-[size:200%] animate-gradient">
@@ -99,43 +106,42 @@ const Landing = () => {
             </motion.div>
           </AnimatePresence>
           
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="mb-6"
-          >
-            <PlanToggle 
-              planType={planType} 
-              onToggle={setPlanType} 
-              labels={t.planToggle}
-            />
+          <motion.div initial={{
+          opacity: 0,
+          y: 20
+        }} animate={{
+          opacity: 1,
+          y: 0
+        }} transition={{
+          delay: 0.3
+        }} className="mb-6">
+            <PlanToggle planType={planType} onToggle={setPlanType} labels={t.planToggle} />
           </motion.div>
           
           <AnimatePresence mode="wait">
-            <motion.p
-              key={`hero-desc-${planType}-${language}`}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="text-sm text-muted-foreground"
-            >
+            <motion.p key={`hero-desc-${planType}-${language}`} initial={{
+            opacity: 0
+          }} animate={{
+            opacity: 1
+          }} exit={{
+            opacity: 0
+          }} transition={{
+            duration: 0.3
+          }} className="text-sm text-muted-foreground">
               {planType === 'individual' ? t.hero.individualDesc : t.hero.companyDesc}
             </motion.p>
           </AnimatePresence>
           
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="mt-8"
-          >
-            <Button 
-              size="lg" 
-              className="text-lg px-10 py-6 shadow-xl shadow-primary/25 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 transition-all hover:scale-105" 
-              onClick={() => navigate('/dashboard')}
-            >
+          <motion.div initial={{
+          opacity: 0,
+          y: 20
+        }} animate={{
+          opacity: 1,
+          y: 0
+        }} transition={{
+          delay: 0.4
+        }} className="mt-8">
+            <Button size="lg" className="text-lg px-10 py-6 shadow-xl shadow-primary/25 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 transition-all hover:scale-105" onClick={() => navigate('/dashboard')}>
               {planType === 'individual' ? t.cta.individualButton : t.cta.companyButton}
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
@@ -147,13 +153,16 @@ const Landing = () => {
       <section className="relative py-24 px-6">
         <div className="max-w-6xl mx-auto relative z-10">
           <AnimatePresence mode="wait">
-            <motion.div
-              key={`usecases-header-${planType}-${language}`}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="text-center mb-16"
-            >
+            <motion.div key={`usecases-header-${planType}-${language}`} initial={{
+            opacity: 0,
+            y: 10
+          }} animate={{
+            opacity: 1,
+            y: 0
+          }} exit={{
+            opacity: 0,
+            y: -10
+          }} className="text-center mb-16">
               <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-4">
                 {planType === 'individual' ? t.useCases.individualTitle : t.useCases.companyTitle}
               </h2>
@@ -164,22 +173,24 @@ const Landing = () => {
           </AnimatePresence>
           
           <AnimatePresence mode="wait">
-            <motion.div 
-              key={`usecases-${planType}-${language}`}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-              className="grid md:grid-cols-[1.2fr_1fr] gap-8"
-            >
+            <motion.div key={`usecases-${planType}-${language}`} initial={{
+            opacity: 0,
+            y: 20
+          }} animate={{
+            opacity: 1,
+            y: 0
+          }} exit={{
+            opacity: 0,
+            y: -20
+          }} transition={{
+            duration: 0.3
+          }} className="grid md:grid-cols-[1.2fr_1fr] gap-8">
               {/* Featured use case */}
               <UseCaseCard {...content.useCases[0]} index={0} variant="featured" />
               
               {/* Stacked compact use cases */}
               <div className="flex flex-col gap-6">
-                {content.useCases.slice(1).map((useCase, index) => (
-                  <UseCaseCard key={index + 1} {...useCase} index={index + 1} variant="compact" />
-                ))}
+                {content.useCases.slice(1).map((useCase, index) => <UseCaseCard key={index + 1} {...useCase} index={index + 1} variant="compact" />)}
               </div>
             </motion.div>
           </AnimatePresence>
@@ -194,19 +205,28 @@ const Landing = () => {
         <div className="max-w-6xl mx-auto relative z-10">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left side - Text content */}
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
-            >
+            <motion.div initial={{
+            opacity: 0,
+            x: -30
+          }} whileInView={{
+            opacity: 1,
+            x: 0
+          }} viewport={{
+            once: true
+          }} transition={{
+            duration: 0.5
+          }}>
               <AnimatePresence mode="wait">
-                <motion.div
-                  key={`preview-text-${language}`}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                >
+                <motion.div key={`preview-text-${language}`} initial={{
+                opacity: 0,
+                y: 10
+              }} animate={{
+                opacity: 1,
+                y: 0
+              }} exit={{
+                opacity: 0,
+                y: -10
+              }}>
                   <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-6">
                     {t.coursePreview.title}
                   </h2>
@@ -217,29 +237,26 @@ const Landing = () => {
                   {/* Feature pills */}
                   <div className="flex flex-wrap gap-3 mb-8">
                     {t.coursePreview.features.map((feature, index) => {
-                      const icons = [BookOpen, Brain, Zap];
-                      const Icon = icons[index % icons.length];
-                      return (
-                        <motion.div
-                          key={index}
-                          initial={{ opacity: 0, scale: 0.9 }}
-                          whileInView={{ opacity: 1, scale: 1 }}
-                          viewport={{ once: true }}
-                          transition={{ delay: index * 0.1 }}
-                          className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20"
-                        >
+                    const icons = [BookOpen, Brain, Zap];
+                    const Icon = icons[index % icons.length];
+                    return <motion.div key={index} initial={{
+                      opacity: 0,
+                      scale: 0.9
+                    }} whileInView={{
+                      opacity: 1,
+                      scale: 1
+                    }} viewport={{
+                      once: true
+                    }} transition={{
+                      delay: index * 0.1
+                    }} className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20">
                           <Icon className="w-4 h-4 text-primary" />
                           <span className="text-sm font-medium text-foreground">{feature}</span>
-                        </motion.div>
-                      );
-                    })}
+                        </motion.div>;
+                  })}
                   </div>
                   
-                  <Button 
-                    onClick={() => navigate('/dashboard')} 
-                    size="lg"
-                    className="shadow-lg shadow-primary/20"
-                  >
+                  <Button onClick={() => navigate('/dashboard')} size="lg" className="shadow-lg shadow-primary/20">
                     {language === 'en' ? 'Try it yourself' : 'Essayez vous-même'}
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
@@ -248,12 +265,18 @@ const Landing = () => {
             </motion.div>
             
             {/* Right side - Phone mockup */}
-            <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-            >
+            <motion.div initial={{
+            opacity: 0,
+            x: 30
+          }} whileInView={{
+            opacity: 1,
+            x: 0
+          }} viewport={{
+            once: true
+          }} transition={{
+            duration: 0.5,
+            delay: 0.2
+          }}>
               <CoursePreview language={language} />
             </motion.div>
           </div>
@@ -264,12 +287,16 @@ const Landing = () => {
       <section className="relative py-24 px-6">
         <div className="max-w-4xl mx-auto relative z-10">
           <AnimatePresence mode="wait">
-            <motion.div
-              key={`testimonials-header-${planType}-${language}`}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-            >
+            <motion.div key={`testimonials-header-${planType}-${language}`} initial={{
+            opacity: 0,
+            y: 10
+          }} animate={{
+            opacity: 1,
+            y: 0
+          }} exit={{
+            opacity: 0,
+            y: -10
+          }}>
               <h2 className="text-3xl md:text-5xl font-bold text-foreground text-center mb-4">
                 {planType === 'individual' ? t.testimonials.individualTitle : t.testimonials.companyTitle}
               </h2>
@@ -288,12 +315,16 @@ const Landing = () => {
       <section className="relative py-24 px-6 bg-muted/20">
         <div className="max-w-5xl mx-auto relative z-10">
           <AnimatePresence mode="wait">
-            <motion.div
-              key={`pricing-header-${planType}-${language}`}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-            >
+            <motion.div key={`pricing-header-${planType}-${language}`} initial={{
+            opacity: 0,
+            y: 10
+          }} animate={{
+            opacity: 1,
+            y: 0
+          }} exit={{
+            opacity: 0,
+            y: -10
+          }}>
               <h2 className="text-3xl md:text-5xl font-bold text-foreground text-center mb-4">
                 {planType === 'individual' ? t.pricing.individualTitle : t.pricing.companyTitle}
               </h2>
@@ -304,17 +335,19 @@ const Landing = () => {
           </AnimatePresence>
           
           <AnimatePresence mode="wait">
-            <motion.div 
-              key={`${planType}-${language}`}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-              className="grid md:grid-cols-3 gap-6 items-start"
-            >
-              {content.pricing.map((plan, index) => (
-                <PricingCard key={index} {...plan} index={index} />
-              ))}
+            <motion.div key={`${planType}-${language}`} initial={{
+            opacity: 0,
+            y: 20
+          }} animate={{
+            opacity: 1,
+            y: 0
+          }} exit={{
+            opacity: 0,
+            y: -20
+          }} transition={{
+            duration: 0.3
+          }} className="grid md:grid-cols-3 gap-6 items-start">
+              {content.pricing.map((plan, index) => <PricingCard key={index} {...plan} index={index} />)}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -324,12 +357,16 @@ const Landing = () => {
       <section className="relative py-24 px-6">
         <div className="max-w-4xl mx-auto relative z-10">
           <AnimatePresence mode="wait">
-            <motion.div
-              key={`faq-header-${planType}-${language}`}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-            >
+            <motion.div key={`faq-header-${planType}-${language}`} initial={{
+            opacity: 0,
+            y: 10
+          }} animate={{
+            opacity: 1,
+            y: 0
+          }} exit={{
+            opacity: 0,
+            y: -10
+          }}>
               <h2 className="text-3xl md:text-5xl font-bold text-foreground text-center mb-4">
                 {t.faq.title}
               </h2>
@@ -340,17 +377,19 @@ const Landing = () => {
           </AnimatePresence>
           
           <AnimatePresence mode="wait">
-            <motion.div 
-              key={`${planType}-${language}`}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-              className="space-y-0"
-            >
-              {content.faq.map((item, index) => (
-                <FAQItem key={index} {...item} index={index} />
-              ))}
+            <motion.div key={`${planType}-${language}`} initial={{
+            opacity: 0,
+            y: 20
+          }} animate={{
+            opacity: 1,
+            y: 0
+          }} exit={{
+            opacity: 0,
+            y: -20
+          }} transition={{
+            duration: 0.3
+          }} className="space-y-0">
+              {content.faq.map((item, index) => <FAQItem key={index} {...item} index={index} />)}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -366,20 +405,26 @@ const Landing = () => {
         
         <div className="max-w-4xl mx-auto text-center relative z-10">
           <AnimatePresence mode="wait">
-            <motion.div
-              key={`cta-${planType}-${language}`}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.4 }}
-              className="space-y-8"
-            >
+            <motion.div key={`cta-${planType}-${language}`} initial={{
+            opacity: 0,
+            y: 20
+          }} animate={{
+            opacity: 1,
+            y: 0
+          }} exit={{
+            opacity: 0,
+            y: -20
+          }} transition={{
+            duration: 0.4
+          }} className="space-y-8">
               {/* Decorative badge */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/20 border border-primary/30"
-              >
+              <motion.div initial={{
+              opacity: 0,
+              scale: 0.9
+            }} animate={{
+              opacity: 1,
+              scale: 1
+            }} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/20 border border-primary/30">
                 <Sparkles className="w-4 h-4 text-primary" />
                 <span className="text-sm font-medium text-primary">
                   {language === 'en' ? 'No credit card required' : 'Aucune carte requise'}
@@ -396,31 +441,23 @@ const Landing = () => {
               
               {/* Feature pills */}
               <div className="flex flex-wrap justify-center gap-3">
-                {[
-                  language === 'en' ? '✓ Free forever plan' : '✓ Plan gratuit à vie',
-                  language === 'en' ? '✓ Cancel anytime' : '✓ Annulez à tout moment',
-                  language === 'en' ? '✓ Instant access' : '✓ Accès instantané',
-                ].map((feature, i) => (
-                  <motion.span
-                    key={i}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 + i * 0.1 }}
-                    className="px-4 py-2 rounded-full bg-card/50 border border-border/50 text-sm text-muted-foreground backdrop-blur-sm"
-                  >
+                {[language === 'en' ? '✓ Free forever plan' : '✓ Plan gratuit à vie', language === 'en' ? '✓ Cancel anytime' : '✓ Annulez à tout moment', language === 'en' ? '✓ Instant access' : '✓ Accès instantané'].map((feature, i) => <motion.span key={i} initial={{
+                opacity: 0,
+                y: 10
+              }} animate={{
+                opacity: 1,
+                y: 0
+              }} transition={{
+                delay: 0.2 + i * 0.1
+              }} className="px-4 py-2 rounded-full bg-card/50 border border-border/50 text-sm text-muted-foreground backdrop-blur-sm">
                     {feature}
-                  </motion.span>
-                ))}
+                  </motion.span>)}
               </div>
               
               {/* CTA Button with glow effect */}
               <div className="relative inline-block">
                 <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-primary to-purple-600 blur-xl opacity-50 animate-pulse" />
-                <Button 
-                  size="lg" 
-                  className="relative text-lg px-14 py-8 shadow-2xl shadow-primary/30 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 transition-all hover:scale-105 rounded-xl" 
-                  onClick={() => navigate('/dashboard')}
-                >
+                <Button size="lg" className="relative text-lg px-14 py-8 shadow-2xl shadow-primary/30 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 transition-all hover:scale-105 rounded-xl" onClick={() => navigate('/dashboard')}>
                   {planType === 'individual' ? t.cta.individualButton : t.cta.companyButton}
                   <ArrowRight className="w-6 h-6 ml-2" />
                 </Button>
@@ -429,14 +466,9 @@ const Landing = () => {
               {/* Social proof */}
               <div className="flex items-center justify-center gap-4 pt-4">
                 <div className="flex -space-x-3">
-                  {['M', 'S', 'T', 'A'].map((initial, i) => (
-                    <div
-                      key={i}
-                      className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/30 to-purple-500/30 border-2 border-background flex items-center justify-center text-sm font-bold text-primary"
-                    >
+                  {['M', 'S', 'T', 'A'].map((initial, i) => <div key={i} className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/30 to-purple-500/30 border-2 border-background flex items-center justify-center text-sm font-bold text-primary">
                       {initial}
-                    </div>
-                  ))}
+                    </div>)}
                 </div>
                 <p className="text-sm text-muted-foreground">
                   <span className="font-semibold text-foreground">1,247</span> {language === 'en' ? 'learners joined this week' : 'apprenants cette semaine'}
@@ -466,8 +498,6 @@ const Landing = () => {
           </p>
         </div>
       </footer>
-    </div>
-  );
+    </div>;
 };
-
 export default Landing;
