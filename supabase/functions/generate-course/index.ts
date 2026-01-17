@@ -62,11 +62,11 @@ const levelNames = {
   expert: 'Expert'
 };
 
-// Get image from Picsum (reliable, no API key required)
+// Get reliable placeholder image
 function getThemedImage(keyword: string, index: number): string {
-  // Use Picsum for reliable random images with seed for variety
-  const seed = keyword.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 10) + index;
-  return `https://picsum.photos/seed/${seed}/800/600`;
+  // Use LoremFlickr - reliable free image service with keywords
+  const cleanKeyword = keyword.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20) || 'education';
+  return `https://loremflickr.com/800/600/${cleanKeyword}?lock=${index}`;
 }
 
 serve(async (req) => {
