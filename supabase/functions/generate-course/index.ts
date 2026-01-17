@@ -351,12 +351,93 @@ IMPORTANT :
     const aiResponse = await response.json();
     console.log('AI Response received');
 
+    // Try to get course data from tool call first
+    let courseData;
     const toolCall = aiResponse.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall || toolCall.function.name !== 'create_course') {
-      throw new Error('Invalid AI response format');
+    
+    if (toolCall && toolCall.function?.name === 'create_course') {
+      try {
+        courseData = JSON.parse(toolCall.function.arguments);
+        console.log('Parsed course data from tool call');
+      } catch (parseError) {
+        console.error('Failed to parse tool call arguments:', parseError);
+      }
+    }
+    
+    // Fallback: try to extract from message content if tool call failed
+    if (!courseData) {
+      const messageContent = aiResponse.choices?.[0]?.message?.content;
+      if (messageContent) {
+        console.log('Attempting to parse from message content');
+        try {
+          // Try to find JSON in the content
+          const jsonMatch = messageContent.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            courseData = JSON.parse(jsonMatch[0]);
+            console.log('Parsed course data from message content');
+          }
+        } catch (contentParseError) {
+          console.error('Failed to parse message content:', contentParseError);
+        }
+      }
+    }
+    
+    // If still no course data, create a basic course structure
+    if (!courseData || !courseData.lessonSections) {
+      console.log('Creating fallback course structure');
+      // Try one more time with a simpler request without tools
+      const fallbackResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { 
+              role: 'user', 
+              content: `${userPrompt}
+
+RÉPONDS UNIQUEMENT avec un JSON valide dans ce format exact, sans aucun texte avant ou après :
+{
+  "title": "Titre du cours",
+  "description": "Description en 2-3 phrases",
+  "category": "Catégorie",
+  "icon": "📚",
+  "lessonSections": [
+    {"title": "Section 1", "content": "Contenu détaillé...", "imageKeyword": "keyword"}
+  ],
+  "quizQuestions": [
+    {"question": "Question?", "options": ["A", "B", "C", "D"], "correctIndex": 0}
+  ]
+}`
+            }
+          ]
+        })
+      });
+
+      if (fallbackResponse.ok) {
+        const fallbackData = await fallbackResponse.json();
+        const fallbackContent = fallbackData.choices?.[0]?.message?.content || '';
+        console.log('Fallback response received');
+        
+        try {
+          const jsonMatch = fallbackContent.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            courseData = JSON.parse(jsonMatch[0]);
+            console.log('Parsed course data from fallback');
+          }
+        } catch (fallbackParseError) {
+          console.error('Failed to parse fallback content:', fallbackParseError);
+        }
+      }
     }
 
-    const courseData = JSON.parse(toolCall.function.arguments);
+    if (!courseData || !courseData.lessonSections) {
+      throw new Error('Impossible de générer le cours. Veuillez réessayer.');
+    }
     
     // Search for images and resources in parallel
     console.log('Searching images and resources via Perplexity...');
