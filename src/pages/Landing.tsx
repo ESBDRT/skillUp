@@ -480,10 +480,8 @@ const Landing = () => {
       <footer className="relative py-8 px-6 border-t border-border bg-muted/20">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 relative z-10">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-gradient-to-br from-primary to-purple-600 rounded-lg flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-primary-foreground" />
-            </div>
-            <span className="font-bold text-foreground">SkillUp</span>
+            
+            
           </div>
           <div className="flex items-center gap-6 text-sm text-muted-foreground">
             <a href="#" className="hover:text-primary transition-colors">{t.footer.privacy}</a>
