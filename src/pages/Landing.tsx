@@ -43,10 +43,7 @@ const Landing = () => {
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/70 backdrop-blur-xl border-b border-border/50">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 bg-gradient-to-br from-primary to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-              <Sparkles className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <span className="text-xl font-bold text-foreground">SquizzUp</span>
+            <img src="/skillup-logo.png" alt="SkillUp" className="h-10 w-auto" />
           </div>
           <div className="flex items-center gap-3">
             <ThemeToggle />

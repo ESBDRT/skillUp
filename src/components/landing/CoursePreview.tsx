@@ -220,7 +220,7 @@ const CoursePreview = ({ language }: CoursePreviewProps) => {
               >
                 <p className="text-[10px] font-medium">
                   {selectedAnswer === card.correct 
-                    ? (language === 'en' ? '✓ Correct! +10 XP' : '✓ Correct ! +10 XP')
+                    ? (language === 'en' ? '✓ Correct!' : '✓ Correct !')
                     : (language === 'en' ? '✗ Not quite right' : "✗ Pas tout à fait")}
                 </p>
               </motion.div>
