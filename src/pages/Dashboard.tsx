@@ -1,20 +1,34 @@
+import React from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Zap, Flame, Target, Plus, Brain, Settings, TrendingUp } from 'lucide-react';
-import { useUser } from '@/context/UserContext';
+import { Zap, Flame, Target, Plus, Brain, Settings, TrendingUp, Loader2 } from 'lucide-react';
 import { mockLessons, categories } from '@/data/mockData';
 import { Progress } from '@/components/ui/progress';
 import KnowledgeTree from '@/components/KnowledgeTree';
 import BottomNav from '@/components/BottomNav';
 import { SavedCourses } from '@/components/SavedCourses';
 import { MyCourses } from '@/components/MyCourses';
+import { TodaySessions } from '@/components/TodaySessions';
+import { useUserProgress } from '@/hooks/useUserProgress';
+import { useCourseSessions } from '@/hooks/useCourseSessions';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { user } = useUser();
+  const { profile, isLoading: isLoadingProfile, checkAndUpdateStreak } = useUserProgress();
+  const { todaySessions, isLoading: isLoadingSessions } = useCourseSessions();
 
-  const dailyProgress = Math.min((user.todayMinutes / user.dailyGoalMinutes) * 100, 100);
-  const isOnTrack = user.todayMinutes >= user.dailyGoalMinutes * 0.5;
+  // Check streak on mount
+  React.useEffect(() => {
+    if (profile) {
+      checkAndUpdateStreak();
+    }
+  }, [profile?.id]);
+
+  const dailyGoalMinutes = profile?.daily_goal_minutes || 15;
+  // TODO: Calculate actual minutes from completed sessions today
+  const todayMinutes = todaySessions.filter(s => s.is_completed).length * 5; // Estimate 5 min per session
+  const dailyProgress = Math.min((todayMinutes / dailyGoalMinutes) * 100, 100);
+  const isOnTrack = todayMinutes >= dailyGoalMinutes * 0.5;
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -29,7 +43,9 @@ const Dashboard = () => {
               className="flex items-center gap-2 px-3 py-2 bg-xp/10 rounded-full"
             >
               <Zap className="w-5 h-5 text-xp fill-xp" />
-              <span className="font-bold text-foreground">{user.xp.toLocaleString()}</span>
+              <span className="font-bold text-foreground">
+                {isLoadingProfile ? '...' : (profile?.xp || 0).toLocaleString()}
+              </span>
             </motion.div>
 
             {/* Streak Badge */}
@@ -40,7 +56,9 @@ const Dashboard = () => {
               className="flex items-center gap-2 px-3 py-2 bg-streak/10 rounded-full"
             >
               <Flame className="w-5 h-5 text-streak fill-streak animate-streak-fire" />
-              <span className="font-bold text-foreground">{user.streak}</span>
+              <span className="font-bold text-foreground">
+                {isLoadingProfile ? '...' : (profile?.streak_count || 0)}
+              </span>
             </motion.div>
 
             {/* Level Badge */}
@@ -51,7 +69,9 @@ const Dashboard = () => {
               className="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-full"
             >
               <TrendingUp className="w-5 h-5 text-primary" />
-              <span className="font-bold text-foreground">Niv. {user.level}</span>
+              <span className="font-bold text-foreground">
+                Niv. {isLoadingProfile ? '...' : (profile?.level || 1)}
+              </span>
             </motion.div>
 
             {/* Settings */}
@@ -83,7 +103,7 @@ const Dashboard = () => {
               <div>
                 <h3 className="font-semibold text-foreground">Objectif du jour</h3>
                 <p className="text-sm text-muted-foreground">
-                  {user.todayMinutes}/{user.dailyGoalMinutes} min
+                  {todayMinutes}/{dailyGoalMinutes} min
                 </p>
               </div>
             </div>
@@ -122,11 +142,21 @@ const Dashboard = () => {
           </button>
         </motion.div>
 
-        {/* My Created Courses */}
+        {/* Today's Sessions */}
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.35 }}
+          className="mb-8"
+        >
+          <TodaySessions sessions={todaySessions} isLoading={isLoadingSessions} />
+        </motion.div>
+
+        {/* My Created Courses */}
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.4 }}
           className="mb-8"
         >
           <MyCourses />
@@ -136,7 +166,7 @@ const Dashboard = () => {
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.4 }}
+          transition={{ delay: 0.45 }}
           className="mb-8"
         >
           <SavedCourses />
