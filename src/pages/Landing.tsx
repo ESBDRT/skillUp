@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, ArrowRight } from 'lucide-react';
+import { Sparkles, ArrowRight, BookOpen, Brain, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PlanToggle from '@/components/landing/PlanToggle';
 import TestimonialCarousel from '@/components/landing/TestimonialCarousel';
@@ -10,6 +10,7 @@ import FAQItem from '@/components/landing/FAQItem';
 import LanguageToggle from '@/components/landing/LanguageToggle';
 import { ThemeToggle } from '@/components/landing/ThemeToggle';
 import { UseCaseCard } from '@/components/landing/UseCaseCard';
+import CoursePreview from '@/components/landing/CoursePreview';
 import { translations, type Language, type PlanType } from '@/data/landingTranslations';
 
 const Landing = () => {
@@ -194,6 +195,80 @@ const Landing = () => {
               </div>
             </motion.div>
           </AnimatePresence>
+        </div>
+      </section>
+
+      {/* Course Preview Section */}
+      <section className="relative py-24 px-6 overflow-hidden">
+        {/* Subtle background accent */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-muted/20 to-transparent" />
+        
+        <div className="max-w-6xl mx-auto relative z-10">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            {/* Left side - Text content */}
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+            >
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={`preview-text-${language}`}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                >
+                  <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-6">
+                    {t.coursePreview.title}
+                  </h2>
+                  <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
+                    {t.coursePreview.subtitle}
+                  </p>
+                  
+                  {/* Feature pills */}
+                  <div className="flex flex-wrap gap-3 mb-8">
+                    {t.coursePreview.features.map((feature, index) => {
+                      const icons = [BookOpen, Brain, Zap];
+                      const Icon = icons[index % icons.length];
+                      return (
+                        <motion.div
+                          key={index}
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          whileInView={{ opacity: 1, scale: 1 }}
+                          viewport={{ once: true }}
+                          transition={{ delay: index * 0.1 }}
+                          className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20"
+                        >
+                          <Icon className="w-4 h-4 text-primary" />
+                          <span className="text-sm font-medium text-foreground">{feature}</span>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                  
+                  <Button 
+                    onClick={() => navigate('/dashboard')} 
+                    size="lg"
+                    className="shadow-lg shadow-primary/20"
+                  >
+                    {language === 'en' ? 'Try it yourself' : 'Essayez vous-même'}
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </motion.div>
+              </AnimatePresence>
+            </motion.div>
+            
+            {/* Right side - Phone mockup */}
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              <CoursePreview language={language} />
+            </motion.div>
+          </div>
         </div>
       </section>
 
