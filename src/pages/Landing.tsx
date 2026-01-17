@@ -152,6 +152,22 @@ const Landing = () => {
               {planType === 'individual' ? t.hero.individualDesc : t.hero.companyDesc}
             </motion.p>
           </AnimatePresence>
+          
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="mt-8"
+          >
+            <Button 
+              size="lg" 
+              className="text-lg px-10 py-6 shadow-xl shadow-primary/25 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 transition-all hover:scale-105" 
+              onClick={() => navigate('/dashboard')}
+            >
+              {planType === 'individual' ? t.cta.individualButton : t.cta.companyButton}
+              <ArrowRight className="w-5 h-5 ml-2" />
+            </Button>
+          </motion.div>
         </div>
       </section>
 
