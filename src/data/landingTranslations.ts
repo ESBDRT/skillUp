@@ -51,6 +51,11 @@ export const translations = {
       companyTitle: "Transform your organization",
       companySubtitle: "Measurable impact across every department"
     },
+    coursePreview: {
+      title: "Experience the learning",
+      subtitle: "Interactive lessons, flashcards, and quizzes — all in one seamless flow",
+      features: ["Bite-sized lessons", "Spaced repetition", "AI-powered personalization"]
+    },
     content: {
       individual: {
         useCases: [
@@ -305,6 +310,11 @@ export const translations = {
       individualSubtitle: "Des personnes réelles, des objectifs concrets, des résultats tangibles",
       companyTitle: "Transformez votre organisation",
       companySubtitle: "Impact mesurable dans chaque département"
+    },
+    coursePreview: {
+      title: "Vivez l'expérience d'apprentissage",
+      subtitle: "Leçons interactives, cartes mémoire et quiz — le tout dans un flux fluide",
+      features: ["Micro-leçons", "Répétition espacée", "Personnalisation IA"]
     },
     content: {
       individual: {
