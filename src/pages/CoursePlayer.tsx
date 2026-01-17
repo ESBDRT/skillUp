@@ -5,6 +5,7 @@ import confetti from 'canvas-confetti';
 import { mockLessons, Lesson } from '@/data/mockData';
 import { useUser } from '@/context/UserContext';
 import { supabase } from '@/integrations/supabase/client';
+import { POC_USER_ID } from '@/lib/constants';
 import StoryProgress from '@/components/StoryProgress';
 import InfoCard from '@/components/cards/InfoCard';
 import QuizCard from '@/components/cards/QuizCard';
@@ -72,12 +73,8 @@ const CoursePlayer = () => {
   const saveProgress = async (showToast = true) => {
     if (!generatedCourse) return;
 
-    // Use a consistent user ID (could be from localStorage or a generated ID)
-    const userId = localStorage.getItem('odemon_user_id') || (() => {
-      const id = crypto.randomUUID();
-      localStorage.setItem('odemon_user_id', id);
-      return id;
-    })();
+    // Use the POC user ID for all tests
+    const userId = POC_USER_ID;
 
     setIsSaving(true);
     try {
