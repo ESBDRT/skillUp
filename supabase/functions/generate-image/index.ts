@@ -5,6 +5,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Reliable placeholder fallback
+function getFallbackImage(keyword: string): string {
+  const cleanKeyword = encodeURIComponent(keyword.toLowerCase().replace(/[^a-z0-9\s]/g, '').substring(0, 30) || 'education');
+  return `https://placehold.co/800x600/2d3748/eaeaea?text=${cleanKeyword}`;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -12,18 +18,25 @@ serve(async (req) => {
 
   try {
     const { keyword, theme } = await req.json();
+    const subject = keyword || theme || 'education';
     
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
     if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+      console.log('No API key, using fallback');
+      return new Response(JSON.stringify({ 
+        imageUrl: getFallbackImage(subject)
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
-    const prompt = keyword 
-      ? `Generate a beautiful, educational illustration for the concept: "${keyword}". Style: modern, clean, colorful, suitable for a learning app. High quality, professional.`
-      : `Generate a beautiful, educational illustration about: "${theme}". Style: modern, clean, colorful, suitable for a learning app. High quality, professional.`;
+    const prompt = `Create a clean, modern educational illustration about "${subject}". 
+Style: Flat design, vibrant colors, professional, suitable for a learning app.
+The image should be visually clear and represent the concept well.
+No text in the image. High quality, 800x600 aspect ratio.`;
 
-    console.log(`Generating image for: ${keyword || theme}`);
+    console.log(`Generating AI image for: ${subject}`);
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -47,17 +60,12 @@ serve(async (req) => {
       const errorText = await response.text();
       console.error('AI Gateway error:', response.status, errorText);
       
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ 
-          error: 'Rate limit exceeded',
-          fallbackUrl: getFallbackImage(keyword || theme)
-        }), {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-      
-      throw new Error(`AI Gateway error: ${response.status}`);
+      // Always return a valid response with fallback
+      return new Response(JSON.stringify({ 
+        imageUrl: getFallbackImage(subject)
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     const aiResponse = await response.json();
@@ -66,15 +74,15 @@ serve(async (req) => {
     const imageData = aiResponse.choices?.[0]?.message?.images?.[0]?.image_url?.url;
     
     if (!imageData) {
-      console.log('No image generated, using fallback');
+      console.log('No image in AI response, using fallback');
       return new Response(JSON.stringify({ 
-        imageUrl: getFallbackImage(keyword || theme)
+        imageUrl: getFallbackImage(subject)
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    console.log('Image generated successfully');
+    console.log('AI image generated successfully');
     
     return new Response(JSON.stringify({ 
       imageUrl: imageData
@@ -84,17 +92,11 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error generating image:', error);
+    const fallbackKeyword = 'education';
     return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : 'Erreur lors de la génération',
-      fallbackUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=600&fit=crop&q=80'
+      imageUrl: getFallbackImage(fallbackKeyword)
     }), {
-      status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
 });
-
-function getFallbackImage(keyword: string): string {
-  const keywords = encodeURIComponent(keyword.toLowerCase().replace(/[^a-zA-Z0-9\s]/g, ''));
-  return `https://source.unsplash.com/800x600/?${keywords}`;
-}
