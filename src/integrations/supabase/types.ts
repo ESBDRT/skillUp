@@ -14,7 +14,104 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      course_cards: {
+        Row: {
+          content: string
+          course_id: string
+          created_at: string
+          flashcard_back: string | null
+          id: string
+          image_url: string | null
+          options: Json | null
+          order_index: number
+          slider_config: Json | null
+          title: string
+          type: string
+          xp_reward: number
+        }
+        Insert: {
+          content: string
+          course_id: string
+          created_at?: string
+          flashcard_back?: string | null
+          id?: string
+          image_url?: string | null
+          options?: Json | null
+          order_index?: number
+          slider_config?: Json | null
+          title: string
+          type: string
+          xp_reward?: number
+        }
+        Update: {
+          content?: string
+          course_id?: string
+          created_at?: string
+          flashcard_back?: string | null
+          id?: string
+          image_url?: string | null
+          options?: Json | null
+          order_index?: number
+          slider_config?: Json | null
+          title?: string
+          type?: string
+          xp_reward?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_cards_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      courses: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          estimated_minutes: number
+          icon: string | null
+          id: string
+          is_published: boolean
+          level: string
+          title: string
+          total_xp: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description?: string | null
+          estimated_minutes?: number
+          icon?: string | null
+          id?: string
+          is_published?: boolean
+          level: string
+          title: string
+          total_xp?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          estimated_minutes?: number
+          icon?: string | null
+          id?: string
+          is_published?: boolean
+          level?: string
+          title?: string
+          total_xp?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
