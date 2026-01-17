@@ -45,8 +45,37 @@ export const translations = {
       individual: "Individual",
       company: "Company"
     },
+    useCases: {
+      individualTitle: "What you can achieve",
+      individualSubtitle: "Real people, real goals, real results",
+      companyTitle: "Transform your organization",
+      companySubtitle: "Measurable impact across every department"
+    },
     content: {
       individual: {
+        useCases: [
+          {
+            icon: "GraduationCap",
+            title: "Exam **preparation**",
+            tagline: "Identify your gaps, not what you know",
+            description: "Certifications, competitive exams, professional credentials — our AI breaks down the official syllabus into a skill tree and focuses your time where it matters.",
+            examples: ["AWS", "PMP", "Civil service", "Medical boards"]
+          },
+          {
+            icon: "Target",
+            title: "Personal **growth**",
+            tagline: "From generic content to concrete action",
+            description: "Practical micro-skills you can apply immediately. No fluff, no theory without practice. Just actionable steps to become better.",
+            examples: ["Leadership", "Communication", "Time management"]
+          },
+          {
+            icon: "Globe",
+            title: "Understand the **news**",
+            tagline: "Become an informed citizen",
+            description: "Complex topics broken down for non-experts. Finally understand geopolitics, economics, and science without a PhD.",
+            examples: ["Geopolitics", "Economics", "Climate science"]
+          }
+        ],
         testimonials: [
           {
             quote: "I learned **Python in 3 months** with bite-sized lessons. The micro-lessons fit perfectly into my busy schedule.",
@@ -123,6 +152,29 @@ export const translations = {
         ]
       },
       company: {
+        useCases: [
+          {
+            icon: "Users",
+            title: "Employee **onboarding**",
+            tagline: "From 3 months to 3 weeks",
+            description: "Get new hires productive faster. Track their progress in real-time. Know exactly when they're ready to contribute.",
+            examples: ["Tech stack", "Processes", "Culture"]
+          },
+          {
+            icon: "Shield",
+            title: "Compliance **training**",
+            tagline: "100% compliance, 0% boredom",
+            description: "Mandatory training that employees actually complete. Trackable, auditable, and adapted to each person's role and level.",
+            examples: ["GDPR", "Security", "Industry regulations"]
+          },
+          {
+            icon: "Compass",
+            title: "Career **transition**",
+            tagline: "The GPS for your workforce",
+            description: "Gap analysis between current and target skills. Personalized upskilling paths. Support career development at scale.",
+            examples: ["Upskilling", "Role transitions", "Digital transformation"]
+          }
+        ],
         testimonials: [
           {
             quote: "We **reduced training costs by 60%** with MicroLearn. Our employees actually complete their training now.",
@@ -248,8 +300,37 @@ export const translations = {
       individual: "Particulier",
       company: "Entreprise"
     },
+    useCases: {
+      individualTitle: "Ce que vous pouvez accomplir",
+      individualSubtitle: "Des personnes réelles, des objectifs concrets, des résultats tangibles",
+      companyTitle: "Transformez votre organisation",
+      companySubtitle: "Impact mesurable dans chaque département"
+    },
     content: {
       individual: {
+        useCases: [
+          {
+            icon: "GraduationCap",
+            title: "Préparation aux **concours**",
+            tagline: "Identifiez vos lacunes, pas vos acquis",
+            description: "Certifications, concours, diplômes professionnels — notre IA décompose le programme officiel en arbre de compétences et concentre votre temps là où ça compte.",
+            examples: ["AWS", "PMP", "Administratif", "Médical"]
+          },
+          {
+            icon: "Target",
+            title: "Développement **personnel**",
+            tagline: "Du contenu générique à l'action concrète",
+            description: "Micro-compétences pratiques applicables immédiatement. Pas de blabla, pas de théorie sans pratique.",
+            examples: ["Leadership", "Communication", "Gestion du temps"]
+          },
+          {
+            icon: "Globe",
+            title: "Comprendre l'**actualité**",
+            tagline: "Devenez un citoyen éclairé",
+            description: "Sujets complexes vulgarisés pour tous. Comprenez enfin la géopolitique, l'économie et la science sans doctorat.",
+            examples: ["Géopolitique", "Économie", "Climat"]
+          }
+        ],
         testimonials: [
           {
             quote: "J'ai appris **Python en 3 mois** avec des leçons courtes. Les micro-leçons s'adaptent parfaitement à mon emploi du temps chargé.",
@@ -326,6 +407,29 @@ export const translations = {
         ]
       },
       company: {
+        useCases: [
+          {
+            icon: "Users",
+            title: "**Onboarding** employés",
+            tagline: "De 3 mois à 3 semaines",
+            description: "Rendez les nouvelles recrues productives plus vite. Suivez leur progression en temps réel.",
+            examples: ["Stack technique", "Processus", "Culture"]
+          },
+          {
+            icon: "Shield",
+            title: "Formation **réglementaire**",
+            tagline: "100% conformité, 0% ennui",
+            description: "Formations obligatoires que les employés terminent vraiment. Traçables et auditables.",
+            examples: ["RGPD", "Sécurité", "Normes sectorielles"]
+          },
+          {
+            icon: "Compass",
+            title: "**Reconversion** professionnelle",
+            tagline: "Le GPS de votre carrière",
+            description: "Analyse d'écart entre compétences actuelles et cibles. Parcours d'upskilling personnalisés.",
+            examples: ["Upskilling", "Transition de poste", "Transformation digitale"]
+          }
+        ],
         testimonials: [
           {
             quote: "Nous avons **réduit les coûts de formation de 60%** avec MicroLearn. Nos employés terminent enfin leurs formations.",
