@@ -43,7 +43,7 @@ const Landing = () => {
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/70 backdrop-blur-xl border-b border-border/50">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src="/skillup-logo.png" alt="SkillUp" className="h-10 w-auto" />
+            <img src="/skillup-logo.png" alt="SkillUp" className="h-14 w-auto mix-blend-multiply dark:mix-blend-normal dark:brightness-110" />
           </div>
           <div className="flex items-center gap-3">
             <ThemeToggle />
