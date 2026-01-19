@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Brain as BrainIcon, Zap, RefreshCw, Trash2, Filter, ChevronDown, ChevronUp, BookOpen } from 'lucide-react';
+import { Brain as BrainIcon, Zap, RefreshCw, Trash2, Filter, ChevronDown, ChevronUp, BookOpen, Network, List } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import BottomNav from '@/components/BottomNav';
@@ -10,6 +10,7 @@ import ConceptCard from '@/components/ConceptCard';
 import ConceptSearch, { SortOption } from '@/components/ConceptSearch';
 import ReviewStreak from '@/components/ReviewStreak';
 import TargetedSessionModal from '@/components/TargetedSessionModal';
+import KnowledgeGraph from '@/components/KnowledgeGraph';
 import { useMemoryConcepts, MemoryConcept } from '@/hooks/useMemoryConcepts';
 import { useUserProgress } from '@/hooks/useUserProgress';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -28,6 +29,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type FilterType = 'all' | 'danger' | 'warning' | 'solid';
 
@@ -52,6 +54,7 @@ const Brain = () => {
   const [weeklyStats, setWeeklyStats] = useState({ totalReviews: 0, correctReviews: 0 });
   const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<'flat' | 'grouped'>('grouped');
+  const [mainView, setMainView] = useState<'list' | 'graph'>('list');
   
   // Search and sort state
   const [searchQuery, setSearchQuery] = useState('');
@@ -326,19 +329,77 @@ const Brain = () => {
           </motion.div>
         )}
 
-        {/* Search Bar */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35 }}
-        >
-          <ConceptSearch
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            sortBy={sortBy}
-            onSortChange={setSortBy}
-          />
-        </motion.div>
+        {/* View Toggle Tabs */}
+        <Tabs value={mainView} onValueChange={(v) => setMainView(v as 'list' | 'graph')} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsTrigger value="list" className="flex items-center gap-2">
+              <List className="w-4 h-4" />
+              Liste
+            </TabsTrigger>
+            <TabsTrigger value="graph" className="flex items-center gap-2">
+              <Network className="w-4 h-4" />
+              Graphe
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Graph View */}
+          <TabsContent value="graph" className="mt-0">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="space-y-4"
+            >
+              {/* Filter for graph */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-2">
+                <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
+                {filters.map((f) => (
+                  <button
+                    key={f.key}
+                    onClick={() => setFilter(f.key)}
+                    className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                      filter === f.key
+                        ? `${f.color} text-white`
+                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              {loading ? (
+                <Skeleton className="h-[400px] rounded-xl" />
+              ) : concepts.length === 0 ? (
+                <div className="text-center py-12">
+                  <BrainIcon className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+                  <p className="text-muted-foreground">
+                    Aucun concept en mémoire. Complète des cours pour voir ton graphe de connaissances !
+                  </p>
+                </div>
+              ) : (
+                <KnowledgeGraph
+                  concepts={concepts}
+                  filter={filter}
+                />
+              )}
+            </motion.div>
+          </TabsContent>
+
+          {/* List View */}
+          <TabsContent value="list" className="mt-0 space-y-4">
+            {/* Search Bar */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35 }}
+            >
+              <ConceptSearch
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                sortBy={sortBy}
+                onSortChange={setSortBy}
+              />
+            </motion.div>
 
         {/* Filter Chips + View Toggle */}
         <motion.div
@@ -497,6 +558,8 @@ const Brain = () => {
             </AnimatePresence>
           )}
         </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Delete Confirmation Dialog */}
