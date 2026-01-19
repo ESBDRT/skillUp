@@ -4,6 +4,7 @@ import { Trophy, Zap, Clock, ArrowRight, Upload, X } from 'lucide-react';
 import { Lesson } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface VictoryScreenProps {
   lesson: Lesson;
@@ -11,6 +12,7 @@ interface VictoryScreenProps {
   onClose: () => void;
   isPreview?: boolean;
   generatedCourse?: {
+    id?: string;
     title: string;
     description?: string;
     category: string;
@@ -30,10 +32,38 @@ const VictoryScreen = ({ lesson, earnedXP, onClose, isPreview, generatedCourse }
     
     setIsPublishing(true);
     try {
-      // TODO: Save to database when auth is implemented
+      // Si le cours a déjà un ID (sauvegardé), mettre à jour is_published
+      if (generatedCourse.id && generatedCourse.id !== 'preview') {
+        const { error } = await supabase
+          .from('courses')
+          .update({ is_published: true })
+          .eq('id', generatedCourse.id);
+        
+        if (error) throw error;
+      } else {
+        // Sinon, sauvegarder le cours complet via l'edge function
+        const courseToSave = {
+          title: generatedCourse.title,
+          description: generatedCourse.description,
+          category: generatedCourse.category,
+          icon: generatedCourse.icon,
+          level: generatedCourse.level,
+          estimatedMinutes: generatedCourse.estimatedMinutes,
+          totalXP: generatedCourse.totalXP,
+          cards: generatedCourse.cards,
+        };
+
+        const { error } = await supabase.functions.invoke('save-generated-course', {
+          body: { course: courseToSave }
+        });
+
+        if (error) throw error;
+      }
+      
       toast.success(`Cours "${generatedCourse.title}" publié avec succès !`);
       onClose();
     } catch (error) {
+      console.error('Error publishing course:', error);
       toast.error("Erreur lors de la publication");
     } finally {
       setIsPublishing(false);
