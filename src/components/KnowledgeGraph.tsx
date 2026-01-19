@@ -1,7 +1,7 @@
 import React, { useRef, useCallback, useMemo, useState, useEffect } from 'react';
-import { ForceGraph2D } from 'react-force-graph';
+import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide, SimulationNodeDatum, SimulationLinkDatum } from 'd3-force';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Brain, Calendar, RotateCcw, ExternalLink } from 'lucide-react';
+import { X, Brain, Calendar, RotateCcw, ExternalLink, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
@@ -27,22 +27,22 @@ interface GraphNode {
   content: string;
   nextReview: string | null;
   repetitions: number;
-  val: number;
+  radius: number;
   color: string;
   x?: number;
   y?: number;
+  vx?: number;
+  vy?: number;
+  fx?: number | null;
+  fy?: number | null;
+  index?: number;
 }
 
 interface GraphLink {
-  source: string;
-  target: string;
+  source: GraphNode | string;
+  target: GraphNode | string;
   type: 'course' | 'semantic';
-  strength: number;
-}
-
-interface GraphData {
-  nodes: GraphNode[];
-  links: GraphLink[];
+  index?: number;
 }
 
 interface KnowledgeGraphProps {
@@ -95,74 +95,22 @@ const hasCommonKeywords = (concept1: MemoryConcept, concept2: MemoryConcept, min
   return false;
 };
 
-// Generate graph data from concepts
-const generateGraphData = (concepts: MemoryConcept[]): GraphData => {
-  // Generate nodes
-  const nodes: GraphNode[] = concepts.map(concept => ({
-    id: concept.id,
-    name: concept.concept_title,
-    courseId: concept.course_id,
-    courseTitle: concept.course_title || 'Cours inconnu',
-    memoryStrength: concept.memory_strength ?? 50,
-    content: concept.concept_content || '',
-    nextReview: concept.next_review_at,
-    repetitions: concept.repetitions ?? 0,
-    val: Math.max(3, (concept.repetitions ?? 0) + 3), // Node size based on repetitions
-    color: getStrengthColor(concept.memory_strength ?? 50),
-  }));
-
-  const links: GraphLink[] = [];
-  
-  // Group by course
-  const courseGroups: Record<string, MemoryConcept[]> = {};
-  concepts.forEach(concept => {
-    if (!courseGroups[concept.course_id]) {
-      courseGroups[concept.course_id] = [];
-    }
-    courseGroups[concept.course_id].push(concept);
-  });
-
-  // Create course-based links (chain within each course)
-  Object.values(courseGroups).forEach(courseConcepts => {
-    for (let i = 0; i < courseConcepts.length - 1; i++) {
-      links.push({
-        source: courseConcepts[i].id,
-        target: courseConcepts[i + 1].id,
-        type: 'course',
-        strength: 0.8,
-      });
-    }
-  });
-
-  // Create semantic links (concepts with common keywords across courses)
-  for (let i = 0; i < concepts.length; i++) {
-    for (let j = i + 1; j < concepts.length; j++) {
-      // Skip if same course (already linked)
-      if (concepts[i].course_id === concepts[j].course_id) continue;
-      
-      if (hasCommonKeywords(concepts[i], concepts[j])) {
-        links.push({
-          source: concepts[i].id,
-          target: concepts[j].id,
-          type: 'semantic',
-          strength: 0.3,
-        });
-      }
-    }
-  }
-
-  return { nodes, links };
-};
-
 const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   concepts,
   filter = 'all',
   selectedCourseId,
 }) => {
-  const fgRef = useRef<any>();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 500 });
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const simulationRef = useRef<ReturnType<typeof forceSimulation<GraphNode>> | null>(null);
+  const nodesRef = useRef<GraphNode[]>([]);
+  const linksRef = useRef<GraphLink[]>([]);
   const navigate = useNavigate();
 
   // Filter concepts
@@ -187,16 +135,76 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   }, [concepts, filter, selectedCourseId]);
 
   // Generate graph data
-  const graphData = useMemo(() => generateGraphData(filteredConcepts), [filteredConcepts]);
+  const graphData = useMemo(() => {
+    const nodes: GraphNode[] = filteredConcepts.map(concept => ({
+      id: concept.id,
+      name: concept.concept_title,
+      courseId: concept.course_id,
+      courseTitle: concept.course_title || 'Cours inconnu',
+      memoryStrength: concept.memory_strength ?? 50,
+      content: concept.concept_content || '',
+      nextReview: concept.next_review_at,
+      repetitions: concept.repetitions ?? 0,
+      radius: Math.max(12, 8 + (concept.repetitions ?? 0) * 2),
+      color: getStrengthColor(concept.memory_strength ?? 50),
+    }));
 
-  // Handle window resize
+    const links: GraphLink[] = [];
+    
+    // Group by course
+    const courseGroups: Record<string, MemoryConcept[]> = {};
+    filteredConcepts.forEach(concept => {
+      if (!courseGroups[concept.course_id]) {
+        courseGroups[concept.course_id] = [];
+      }
+      courseGroups[concept.course_id].push(concept);
+    });
+
+    // Create course-based links
+    Object.values(courseGroups).forEach(courseConcepts => {
+      for (let i = 0; i < courseConcepts.length - 1; i++) {
+        const sourceNode = nodes.find(n => n.id === courseConcepts[i].id);
+        const targetNode = nodes.find(n => n.id === courseConcepts[i + 1].id);
+        if (sourceNode && targetNode) {
+          links.push({
+            source: sourceNode,
+            target: targetNode,
+            type: 'course',
+          });
+        }
+      }
+    });
+
+    // Create semantic links
+    for (let i = 0; i < filteredConcepts.length; i++) {
+      for (let j = i + 1; j < filteredConcepts.length; j++) {
+        if (filteredConcepts[i].course_id === filteredConcepts[j].course_id) continue;
+        
+        if (hasCommonKeywords(filteredConcepts[i], filteredConcepts[j])) {
+          const sourceNode = nodes.find(n => n.id === filteredConcepts[i].id);
+          const targetNode = nodes.find(n => n.id === filteredConcepts[j].id);
+          if (sourceNode && targetNode) {
+            links.push({
+              source: sourceNode,
+              target: targetNode,
+              type: 'semantic',
+            });
+          }
+        }
+      }
+    }
+
+    return { nodes, links };
+  }, [filteredConcepts]);
+
+  // Handle resize
   useEffect(() => {
     const updateDimensions = () => {
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
         setDimensions({
           width: rect.width || 800,
-          height: Math.max(400, window.innerHeight - 300),
+          height: Math.max(400, window.innerHeight - 350),
         });
       }
     };
@@ -206,18 +214,192 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
-  // Node click handler
-  const handleNodeClick = useCallback((node: any) => {
-    setSelectedNode(node as GraphNode);
-    
-    // Zoom to node
-    if (fgRef.current) {
-      fgRef.current.centerAt(node.x, node.y, 500);
-      fgRef.current.zoom(2, 500);
-    }
-  }, []);
+  // Initialize simulation
+  useEffect(() => {
+    if (graphData.nodes.length === 0) return;
 
-  // Start review session for selected concept
+    nodesRef.current = graphData.nodes.map(n => ({ ...n }));
+    linksRef.current = graphData.links.map(l => ({
+      ...l,
+      source: nodesRef.current.find(n => n.id === (typeof l.source === 'string' ? l.source : l.source.id))!,
+      target: nodesRef.current.find(n => n.id === (typeof l.target === 'string' ? l.target : l.target.id))!,
+    }));
+
+    const simulation = forceSimulation(nodesRef.current)
+      .force('link', forceLink(linksRef.current).id((d: any) => d.id).distance(80))
+      .force('charge', forceManyBody().strength(-150))
+      .force('center', forceCenter(dimensions.width / 2, dimensions.height / 2))
+      .force('collide', forceCollide().radius((d: any) => d.radius + 5))
+      .alphaDecay(0.02);
+
+    simulationRef.current = simulation;
+
+    simulation.on('tick', () => {
+      draw();
+    });
+
+    return () => {
+      simulation.stop();
+    };
+  }, [graphData, dimensions]);
+
+  // Draw function
+  const draw = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const nodes = nodesRef.current;
+    const links = linksRef.current;
+
+    ctx.clearRect(0, 0, dimensions.width, dimensions.height);
+    ctx.save();
+    
+    // Apply zoom and pan
+    ctx.translate(pan.x, pan.y);
+    ctx.scale(zoom, zoom);
+
+    // Draw links
+    links.forEach(link => {
+      const source = link.source as GraphNode;
+      const target = link.target as GraphNode;
+      
+      if (source.x === undefined || source.y === undefined || 
+          target.x === undefined || target.y === undefined) return;
+
+      ctx.beginPath();
+      ctx.moveTo(source.x, source.y);
+      ctx.lineTo(target.x, target.y);
+      
+      if (link.type === 'course') {
+        ctx.strokeStyle = 'rgba(100, 150, 255, 0.4)';
+        ctx.lineWidth = 2;
+      } else {
+        ctx.strokeStyle = 'rgba(180, 130, 255, 0.25)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+      }
+      
+      ctx.stroke();
+      ctx.setLineDash([]);
+    });
+
+    // Draw nodes
+    nodes.forEach(node => {
+      if (node.x === undefined || node.y === undefined) return;
+
+      // Node circle
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, node.radius, 0, 2 * Math.PI);
+      ctx.fillStyle = node.color;
+      ctx.fill();
+      
+      // Glow effect for selected
+      if (selectedNode?.id === node.id) {
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      }
+
+      // Label
+      const fontSize = Math.max(9, 11 / zoom);
+      ctx.font = `${fontSize}px Inter, sans-serif`;
+      ctx.textAlign = 'center';
+      
+      let label = node.name;
+      if (ctx.measureText(label).width > 70) {
+        label = label.substring(0, 10) + '...';
+      }
+      
+      const textY = node.y + node.radius + fontSize + 2;
+      
+      // Text background
+      const textWidth = ctx.measureText(label).width;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+      ctx.fillRect(node.x - textWidth / 2 - 3, textY - fontSize / 2 - 2, textWidth + 6, fontSize + 4);
+      
+      // Text
+      ctx.fillStyle = 'white';
+      ctx.fillText(label, node.x, textY);
+    });
+
+    ctx.restore();
+  }, [dimensions, zoom, pan, selectedNode]);
+
+  // Redraw on state changes
+  useEffect(() => {
+    draw();
+  }, [draw]);
+
+  // Mouse handlers
+  const getMousePos = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: (e.clientX - rect.left - pan.x) / zoom,
+      y: (e.clientY - rect.top - pan.y) / zoom,
+    };
+  };
+
+  const findNodeAtPosition = (x: number, y: number): GraphNode | null => {
+    for (const node of nodesRef.current) {
+      if (node.x === undefined || node.y === undefined) continue;
+      const dx = x - node.x;
+      const dy = y - node.y;
+      if (Math.sqrt(dx * dx + dy * dy) <= node.radius) {
+        return node;
+      }
+    }
+    return null;
+  };
+
+  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const pos = getMousePos(e);
+    const node = findNodeAtPosition(pos.x, pos.y);
+    setSelectedNode(node);
+    draw();
+  };
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const pos = getMousePos(e);
+    const node = findNodeAtPosition(pos.x, pos.y);
+    
+    if (!node) {
+      setIsDragging(true);
+      setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (isDragging) {
+      setPan({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y,
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    setZoom(z => Math.min(4, Math.max(0.3, z * delta)));
+  };
+
+  const handleZoomIn = () => setZoom(z => Math.min(4, z * 1.2));
+  const handleZoomOut = () => setZoom(z => Math.max(0.3, z / 1.2));
+  const handleReset = () => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  };
+
   const handleReviewConcept = () => {
     if (selectedNode) {
       sessionStorage.setItem('targetedConceptIds', JSON.stringify([selectedNode.id]));
@@ -225,76 +407,6 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     }
   };
 
-  // Custom node rendering
-  const nodeCanvasObject = useCallback((node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
-    const graphNode = node as GraphNode;
-    const label = graphNode.name;
-    const fontSize = Math.max(10, 12 / globalScale);
-    const nodeSize = graphNode.val * 2;
-    
-    // Draw node circle
-    ctx.beginPath();
-    ctx.arc(node.x!, node.y!, nodeSize, 0, 2 * Math.PI);
-    ctx.fillStyle = graphNode.color;
-    ctx.fill();
-    
-    // Add glow effect for selected node
-    if (selectedNode?.id === graphNode.id) {
-      ctx.strokeStyle = 'white';
-      ctx.lineWidth = 3 / globalScale;
-      ctx.stroke();
-    }
-    
-    // Draw label
-    ctx.font = `${fontSize}px Inter, sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = 'white';
-    
-    // Truncate label if too long
-    const maxWidth = 80;
-    let displayLabel = label;
-    if (ctx.measureText(label).width > maxWidth) {
-      displayLabel = label.substring(0, 12) + '...';
-    }
-    
-    // Draw text with background
-    const textWidth = ctx.measureText(displayLabel).width;
-    const textY = node.y! + nodeSize + fontSize;
-    
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-    ctx.fillRect(node.x! - textWidth / 2 - 2, textY - fontSize / 2 - 1, textWidth + 4, fontSize + 2);
-    
-    ctx.fillStyle = 'white';
-    ctx.fillText(displayLabel, node.x!, textY);
-  }, [selectedNode]);
-
-  // Custom link rendering
-  const linkCanvasObject = useCallback((link: any, ctx: CanvasRenderingContext2D) => {
-    const graphLink = link as GraphLink;
-    const source = link.source;
-    const target = link.target;
-    
-    if (!source.x || !source.y || !target.x || !target.y) return;
-    
-    ctx.beginPath();
-    ctx.moveTo(source.x, source.y);
-    ctx.lineTo(target.x, target.y);
-    
-    if (graphLink.type === 'course') {
-      ctx.strokeStyle = 'rgba(100, 150, 255, 0.4)';
-      ctx.lineWidth = 1.5;
-    } else {
-      ctx.strokeStyle = 'rgba(180, 130, 255, 0.25)';
-      ctx.lineWidth = 0.8;
-      ctx.setLineDash([3, 3]);
-    }
-    
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }, []);
-
-  // Format date for display
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return 'Non planifié';
     const date = new Date(dateStr);
@@ -335,39 +447,39 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
         </div>
       </div>
 
+      {/* Controls */}
+      <div className="absolute top-4 right-4 z-10 flex items-center gap-1 bg-background/80 backdrop-blur-sm rounded-lg p-1">
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleZoomIn}>
+          <ZoomIn className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleZoomOut}>
+          <ZoomOut className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleReset}>
+          <Maximize2 className="h-4 w-4" />
+        </Button>
+      </div>
+
       {/* Stats */}
-      <div className="absolute top-4 right-4 z-10 bg-background/80 backdrop-blur-sm rounded-lg p-2">
+      <div className="absolute bottom-4 left-4 z-10 bg-background/80 backdrop-blur-sm rounded-lg p-2">
         <p className="text-xs text-muted-foreground">
-          {graphData.nodes.length} concepts • {graphData.links.length} liens
+          {nodesRef.current.length} concepts • {linksRef.current.length} liens
         </p>
       </div>
 
-      {/* Graph */}
-      <ForceGraph2D
-        ref={fgRef}
-        graphData={graphData}
+      {/* Canvas */}
+      <canvas
+        ref={canvasRef}
         width={dimensions.width}
         height={dimensions.height}
-        nodeCanvasObject={nodeCanvasObject}
-        linkCanvasObject={linkCanvasObject}
-        nodePointerAreaPaint={(node: any, color, ctx) => {
-          const nodeSize = (node as GraphNode).val * 2;
-          ctx.beginPath();
-          ctx.arc(node.x!, node.y!, nodeSize + 5, 0, 2 * Math.PI);
-          ctx.fillStyle = color;
-          ctx.fill();
-        }}
-        onNodeClick={handleNodeClick}
-        cooldownTicks={100}
-        d3AlphaDecay={0.02}
-        d3VelocityDecay={0.3}
-        linkDirectionalParticles={0}
-        enableNodeDrag={true}
-        enableZoomInteraction={true}
-        enablePanInteraction={true}
-        minZoom={0.5}
-        maxZoom={4}
-        backgroundColor="transparent"
+        onClick={handleCanvasClick}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        onWheel={handleWheel}
+        className="cursor-grab active:cursor-grabbing"
+        style={{ touchAction: 'none' }}
       />
 
       {/* Selected Node Detail Modal */}
