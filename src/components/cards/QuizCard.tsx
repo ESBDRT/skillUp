@@ -69,8 +69,12 @@ const QuizCard = ({ card, onComplete, onNext, questionNumber, totalQuestions }: 
   const [hasAnswered, setHasAnswered] = useState(false);
   const [hasCompleted, setHasCompleted] = useState(false);
 
+  console.log('=== QUIZCARD RECEIVED ===', { cardId: card.id, options: card.options, optionsType: typeof card.options });
+
   // Normalize options to ensure correct format
   const normalizedOptions = normalizeOptions(card.options);
+  
+  console.log('=== QUIZCARD NORMALIZED ===', { normalizedOptions, count: normalizedOptions.length });
   
   // Find the correct answer
   const correctOption = normalizedOptions.find(o => o.isCorrect);
