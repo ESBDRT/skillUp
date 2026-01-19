@@ -86,7 +86,7 @@ const OpenQuestionCard = ({ card, onComplete, onNext }: OpenQuestionCardProps) =
   };
 
   return (
-    <div className="flex-1 flex flex-col">
+    <div className="flex-1 flex flex-col max-w-xl mx-auto w-full">
       <motion.div
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -95,8 +95,8 @@ const OpenQuestionCard = ({ card, onComplete, onNext }: OpenQuestionCardProps) =
         <div className="inline-block px-2.5 sm:px-3 py-1 bg-primary/10 rounded-full mb-3 sm:mb-4">
           <span className="text-xs sm:text-sm font-medium text-primary">Question ouverte</span>
         </div>
-        <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-1.5 sm:mb-2 leading-tight">{card.title}</h2>
-        <p className="text-base sm:text-lg text-muted-foreground">{card.content}</p>
+        <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground mb-1.5 sm:mb-2 leading-tight">{card.title}</h2>
+        <p className="text-sm sm:text-base md:text-lg text-muted-foreground">{card.content}</p>
       </motion.div>
 
       <motion.div
@@ -112,11 +112,11 @@ const OpenQuestionCard = ({ card, onComplete, onNext }: OpenQuestionCardProps) =
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
               placeholder="Écrivez votre réponse ici..."
-              className="flex-1 min-h-[120px] sm:min-h-[150px] rounded-xl sm:rounded-2xl resize-none text-sm sm:text-base"
+              className="flex-1 min-h-[100px] sm:min-h-[120px] md:min-h-[150px] rounded-xl sm:rounded-2xl resize-none text-sm sm:text-base"
               autoFocus
             />
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 mt-3 sm:mt-4">
-              <span className="text-xs sm:text-sm text-muted-foreground order-2 sm:order-1">
+              <span className="text-xs sm:text-sm text-muted-foreground order-2 sm:order-1 text-center sm:text-left">
                 {answer.length > 0 && `${answer.length} caractères`}
               </span>
               <Button
@@ -152,7 +152,7 @@ const OpenQuestionCard = ({ card, onComplete, onNext }: OpenQuestionCardProps) =
                 ) : (
                   <XCircle className="w-5 h-5 sm:w-6 sm:h-6 text-warning flex-shrink-0 mt-0.5" />
                 )}
-                <div>
+                <div className="min-w-0">
                   <h3 className={`font-semibold mb-1 text-sm sm:text-base ${feedback.isValid ? 'text-success' : 'text-warning'}`}>
                     {feedback.isValid ? 'Bonne réponse !' : 'À améliorer'}
                   </h3>
@@ -169,8 +169,8 @@ const OpenQuestionCard = ({ card, onComplete, onNext }: OpenQuestionCardProps) =
                   <ul className="space-y-1">
                     {feedback.additions.map((addition, idx) => (
                       <li key={idx} className="text-xs sm:text-sm text-muted-foreground flex items-start gap-2">
-                        <span className="text-primary">•</span>
-                        {addition}
+                        <span className="text-primary flex-shrink-0">•</span>
+                        <span>{addition}</span>
                       </li>
                     ))}
                   </ul>
