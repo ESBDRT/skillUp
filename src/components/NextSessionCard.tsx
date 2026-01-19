@@ -104,7 +104,7 @@ export function NextSessionCard({ session, isLoading }: NextSessionCardProps) {
           <p className="text-xs text-primary font-medium uppercase tracking-wide">
             Prochaine session
           </p>
-          <h3 className="font-bold text-lg text-foreground truncate">
+          <h3 className="font-bold text-base sm:text-lg text-foreground line-clamp-2 leading-tight">
             {session.course?.title || 'Cours'}
           </h3>
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
