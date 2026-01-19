@@ -5,12 +5,82 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Input validation constants
+const MAX_THEME_LENGTH = 200;
+const MAX_DAILY_MINUTES = 120;
+const MIN_DAILY_MINUTES = 5;
+const MAX_DURATION_DAYS = 365;
+const MIN_DURATION_DAYS = 1;
+const VALID_LEVELS = ['beginner', 'intermediate', 'expert'] as const;
+const MAX_KEYWORDS = 50;
+
 interface GenerateCoursePlanRequest {
   theme: string;
   dailyMinutes: number;
   level: 'beginner' | 'intermediate' | 'expert';
   durationDays: number;
   knownKeywords?: string[];
+}
+
+// Sanitize string input
+function sanitizeString(input: unknown, maxLength: number): string {
+  if (typeof input !== 'string') return '';
+  return input.trim().slice(0, maxLength).replace(/[<>]/g, '');
+}
+
+// Validate request input
+function validateRequest(body: unknown): { valid: true; data: GenerateCoursePlanRequest } | { valid: false; error: string } {
+  if (!body || typeof body !== 'object') {
+    return { valid: false, error: 'Invalid request body' };
+  }
+
+  const { theme, dailyMinutes, level, durationDays, knownKeywords } = body as Record<string, unknown>;
+
+  // Validate theme
+  if (!theme || typeof theme !== 'string' || theme.trim().length === 0) {
+    return { valid: false, error: 'Theme is required' };
+  }
+  if (theme.length > MAX_THEME_LENGTH) {
+    return { valid: false, error: `Theme must be less than ${MAX_THEME_LENGTH} characters` };
+  }
+
+  // Validate dailyMinutes
+  const minutes = Number(dailyMinutes);
+  if (isNaN(minutes) || minutes < MIN_DAILY_MINUTES || minutes > MAX_DAILY_MINUTES) {
+    return { valid: false, error: `Daily minutes must be between ${MIN_DAILY_MINUTES} and ${MAX_DAILY_MINUTES}` };
+  }
+
+  // Validate durationDays
+  const days = Number(durationDays);
+  if (isNaN(days) || days < MIN_DURATION_DAYS || days > MAX_DURATION_DAYS) {
+    return { valid: false, error: `Duration must be between ${MIN_DURATION_DAYS} and ${MAX_DURATION_DAYS} days` };
+  }
+
+  // Validate level
+  if (!level || !VALID_LEVELS.includes(level as typeof VALID_LEVELS[number])) {
+    return { valid: false, error: `Level must be one of: ${VALID_LEVELS.join(', ')}` };
+  }
+
+  // Validate knownKeywords if provided
+  if (knownKeywords !== undefined) {
+    if (!Array.isArray(knownKeywords)) {
+      return { valid: false, error: 'knownKeywords must be an array' };
+    }
+    if (knownKeywords.length > MAX_KEYWORDS) {
+      return { valid: false, error: `Maximum ${MAX_KEYWORDS} keywords allowed` };
+    }
+  }
+
+  return {
+    valid: true,
+    data: {
+      theme: sanitizeString(theme, MAX_THEME_LENGTH),
+      dailyMinutes: minutes,
+      level: level as 'beginner' | 'intermediate' | 'expert',
+      durationDays: days,
+      knownKeywords: knownKeywords?.map(kw => sanitizeString(kw, 100))
+    }
+  };
 }
 
 const levelNames = {
@@ -25,14 +95,37 @@ serve(async (req) => {
   }
 
   try {
-    const { theme, dailyMinutes, level, durationDays, knownKeywords }: GenerateCoursePlanRequest = await req.json();
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(JSON.stringify({ error: 'Invalid JSON in request body' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Validate input
+    const validation = validateRequest(body);
+    if (!validation.valid) {
+      return new Response(JSON.stringify({ error: validation.error }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const { theme, dailyMinutes, level, durationDays, knownKeywords } = validation.data;
     
     console.log(`Generating course plan: theme="${theme}", minutes=${dailyMinutes}, level=${level}, days=${durationDays}`);
 
     const API_KEY = Deno.env.get('API_APP');
     
     if (!API_KEY) {
-      throw new Error('API_APP key is not configured');
+      console.error('API key not configured');
+      return new Response(JSON.stringify({ error: 'Service temporarily unavailable' }), {
+        status: 503,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     const knownConceptsInstruction = knownKeywords && knownKeywords.length > 0
@@ -67,8 +160,7 @@ Tu DOIS répondre UNIQUEMENT avec ce JSON, sans texte avant ou après :
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Blackbox API error:', response.status, errorText);
+      console.error('External API error:', response.status);
       
       if (response.status === 429) {
         return new Response(JSON.stringify({ 
@@ -81,20 +173,21 @@ Tu DOIS répondre UNIQUEMENT avec ce JSON, sans texte avant ou après :
       
       if (response.status === 402) {
         return new Response(JSON.stringify({ 
-          error: 'Crédits insuffisants.' 
+          error: 'Service temporairement indisponible.' 
         }), {
-          status: 402,
+          status: 503,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
       
-      throw new Error(`API error: ${response.status}`);
+      return new Response(JSON.stringify({ error: 'Erreur lors de la génération du planning' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     const aiResponse = await response.json();
     const content = aiResponse.choices?.[0]?.message?.content || '';
-    
-    console.log('Raw AI response:', content.substring(0, 500));
 
     let planData;
     
@@ -102,9 +195,8 @@ Tu DOIS répondre UNIQUEMENT avec ce JSON, sans texte avant ou après :
     if (jsonMatch) {
       try {
         planData = JSON.parse(jsonMatch[0]);
-        console.log('Parsed with strategy 1 (JSON match)');
       } catch (e) {
-        console.log('Strategy 1 failed:', e);
+        // Silent fail
       }
     }
     
@@ -113,9 +205,8 @@ Tu DOIS répondre UNIQUEMENT avec ce JSON, sans texte avant ou après :
       if (codeBlockMatch) {
         try {
           planData = JSON.parse(codeBlockMatch[1].trim());
-          console.log('Parsed with strategy 2 (code block)');
         } catch (e) {
-          console.log('Strategy 2 failed:', e);
+          // Silent fail
         }
       }
     }
@@ -123,14 +214,13 @@ Tu DOIS répondre UNIQUEMENT avec ce JSON, sans texte avant ou après :
     if (!planData) {
       try {
         planData = JSON.parse(content.trim());
-        console.log('Parsed with strategy 3 (full content)');
       } catch (e) {
-        console.log('Strategy 3 failed:', e);
+        // Silent fail
       }
     }
     
     if (!planData || !planData.days) {
-      console.log('All parsing strategies failed, using fallback plan');
+      console.log('Using fallback plan');
       
       const days = [];
       const conceptsPerDay = ['Introduction', 'Fondamentaux', 'Applications', 'Pratique', 'Révision'];
@@ -173,16 +263,16 @@ Tu DOIS répondre UNIQUEMENT avec ce JSON, sans texte avant ou après :
       totalConcepts: planData.totalConcepts || planData.days?.reduce((sum: number, d: any) => sum + (d.concepts?.length || 0), 0) || 0
     };
 
-    console.log(`Course plan generated: "${result.courseTitle}" with ${result.days.length} days, ${result.totalConcepts} concepts`);
+    console.log(`Course plan generated: "${result.courseTitle}" with ${result.days.length} days`);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
-    console.error('Error generating course plan:', error);
+    console.error('Error generating course plan');
     return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : 'Erreur lors de la génération du planning' 
+      error: 'Une erreur est survenue lors de la génération du planning' 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

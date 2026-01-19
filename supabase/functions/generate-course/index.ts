@@ -6,6 +6,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Input validation constants
+const MAX_THEME_LENGTH = 200;
+const MAX_DAILY_MINUTES = 120;
+const MIN_DAILY_MINUTES = 5;
+const VALID_LEVELS = ['beginner', 'intermediate', 'expert'] as const;
+const MAX_KEYWORDS = 50;
+
 interface DayPlan {
   day: number;
   title: string;
@@ -33,6 +40,66 @@ interface GenerateCourseRequest {
   coursePlan?: CoursePlan;
 }
 
+// Sanitize string input
+function sanitizeString(input: unknown, maxLength: number): string {
+  if (typeof input !== 'string') return '';
+  return input.trim().slice(0, maxLength).replace(/[<>]/g, '');
+}
+
+// Validate request input
+function validateRequest(body: unknown): { valid: true; data: GenerateCourseRequest } | { valid: false; error: string } {
+  if (!body || typeof body !== 'object') {
+    return { valid: false, error: 'Invalid request body' };
+  }
+
+  const { theme, dailyMinutes, level, knownKeywords } = body as Record<string, unknown>;
+
+  // Validate theme
+  if (!theme || typeof theme !== 'string' || theme.trim().length === 0) {
+    return { valid: false, error: 'Theme is required and must be a non-empty string' };
+  }
+  if (theme.length > MAX_THEME_LENGTH) {
+    return { valid: false, error: `Theme must be less than ${MAX_THEME_LENGTH} characters` };
+  }
+
+  // Validate dailyMinutes
+  const minutes = Number(dailyMinutes);
+  if (isNaN(minutes) || minutes < MIN_DAILY_MINUTES || minutes > MAX_DAILY_MINUTES) {
+    return { valid: false, error: `Daily minutes must be between ${MIN_DAILY_MINUTES} and ${MAX_DAILY_MINUTES}` };
+  }
+
+  // Validate level
+  if (!level || !VALID_LEVELS.includes(level as typeof VALID_LEVELS[number])) {
+    return { valid: false, error: `Level must be one of: ${VALID_LEVELS.join(', ')}` };
+  }
+
+  // Validate knownKeywords if provided
+  if (knownKeywords !== undefined) {
+    if (!Array.isArray(knownKeywords)) {
+      return { valid: false, error: 'knownKeywords must be an array' };
+    }
+    if (knownKeywords.length > MAX_KEYWORDS) {
+      return { valid: false, error: `Maximum ${MAX_KEYWORDS} keywords allowed` };
+    }
+    for (const kw of knownKeywords) {
+      if (typeof kw !== 'string') {
+        return { valid: false, error: 'All keywords must be strings' };
+      }
+    }
+  }
+
+  return {
+    valid: true,
+    data: {
+      theme: sanitizeString(theme, MAX_THEME_LENGTH),
+      dailyMinutes: minutes,
+      level: level as 'beginner' | 'intermediate' | 'expert',
+      knownKeywords: knownKeywords?.map(kw => sanitizeString(kw, 100)),
+      coursePlan: (body as Record<string, unknown>).coursePlan as CoursePlan | undefined
+    }
+  };
+}
+
 const levelNames = {
   beginner: 'Notions',
   intermediate: 'Intermédiaire',
@@ -54,15 +121,14 @@ async function generateImage(keyword: string, theme: string, supabaseUrl: string
     });
     
     if (error) {
-      console.error('Image generation error:', error);
+      console.error('Image generation error');
       return getFallbackImage(keyword);
     }
     
     const imageUrl = data?.imageUrl || data?.fallbackUrl || getFallbackImage(keyword);
-    console.log(`Image result for ${keyword}: ${imageUrl?.substring(0, 50)}...`);
     return imageUrl;
   } catch (e) {
-    console.error('Failed to generate image:', e);
+    console.error('Failed to generate image');
     return getFallbackImage(keyword);
   }
 }
@@ -73,7 +139,26 @@ serve(async (req) => {
   }
 
   try {
-    const { theme, dailyMinutes, level, knownKeywords, coursePlan }: GenerateCourseRequest = await req.json();
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(JSON.stringify({ error: 'Invalid JSON in request body' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Validate input
+    const validation = validateRequest(body);
+    if (!validation.valid) {
+      return new Response(JSON.stringify({ error: validation.error }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const { theme, dailyMinutes, level, knownKeywords, coursePlan } = validation.data;
     
     console.log(`Generating course: theme="${theme}", minutes=${dailyMinutes}, level=${level}`);
 
@@ -82,7 +167,11 @@ serve(async (req) => {
     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
     
     if (!API_KEY) {
-      throw new Error('API_APP key is not configured');
+      console.error('API key not configured');
+      return new Response(JSON.stringify({ error: 'Service temporarily unavailable' }), {
+        status: 503,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     const hasPlan = coursePlan && coursePlan.days && coursePlan.days.length > 0;
@@ -120,8 +209,7 @@ Réponds UNIQUEMENT avec ce JSON :
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Blackbox API error:', response.status, errorText);
+      console.error('External API error:', response.status);
       
       if (response.status === 429) {
         return new Response(JSON.stringify({ 
@@ -134,20 +222,21 @@ Réponds UNIQUEMENT avec ce JSON :
 
       if (response.status === 402) {
         return new Response(JSON.stringify({ 
-          error: 'Crédits insuffisants. Veuillez recharger votre compte.' 
+          error: 'Service temporairement indisponible.' 
         }), {
-          status: 402,
+          status: 503,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
       
-      throw new Error(`API error: ${response.status}`);
+      return new Response(JSON.stringify({ error: 'Erreur lors de la génération du cours' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     const aiResponse = await response.json();
     const content = aiResponse.choices?.[0]?.message?.content || '';
-    
-    console.log('Raw AI response:', content.substring(0, 500));
 
     let courseData;
     
@@ -155,9 +244,8 @@ Réponds UNIQUEMENT avec ce JSON :
     if (jsonMatch) {
       try {
         courseData = JSON.parse(jsonMatch[0]);
-        console.log('Parsed with strategy 1');
       } catch (e) {
-        console.log('Strategy 1 failed');
+        // Silent fail, will use fallback
       }
     }
     
@@ -166,15 +254,13 @@ Réponds UNIQUEMENT avec ce JSON :
       if (codeBlockMatch) {
         try {
           courseData = JSON.parse(codeBlockMatch[1].trim());
-          console.log('Parsed with strategy 2');
         } catch (e) {
-          console.log('Strategy 2 failed');
+          // Silent fail, will use fallback
         }
       }
     }
     
     if (!courseData || !courseData.lessonSections) {
-      console.log('Using fallback course structure');
       courseData = {
         title: `Cours sur ${theme}`,
         description: `Découvrez les bases de ${theme} dans ce cours adapté au niveau ${levelNames[level]}.`,
@@ -233,7 +319,6 @@ Réponds UNIQUEMENT avec ce JSON :
     }
 
     const limitedSections = (courseData.lessonSections || []).slice(0, maxSlides);
-    console.log(`Processing ${limitedSections.length} slides`);
 
     const cards: any[] = [];
 
@@ -314,7 +399,7 @@ Réponds UNIQUEMENT avec ce JSON :
   } catch (error) {
     console.error('Error generating course:', error);
     return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : 'Erreur lors de la génération du cours' 
+      error: 'Une erreur est survenue lors de la génération du cours' 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

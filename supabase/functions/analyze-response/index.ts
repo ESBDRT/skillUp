@@ -5,11 +5,49 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Input validation constants
+const MAX_QUESTION_LENGTH = 500;
+const MAX_ANSWER_LENGTH = 2000;
+const MAX_TITLE_LENGTH = 200;
+
 interface AnalyzeRequest {
   question: string;
   expectedAnswer: string;
   userAnswer: string;
   cardTitle: string;
+}
+
+// Sanitize string input
+function sanitizeString(input: unknown, maxLength: number): string {
+  if (typeof input !== 'string') return '';
+  return input.trim().slice(0, maxLength).replace(/[<>]/g, '');
+}
+
+// Validate request input
+function validateRequest(body: unknown): { valid: true; data: AnalyzeRequest } | { valid: false; error: string } {
+  if (!body || typeof body !== 'object') {
+    return { valid: false, error: 'Invalid request body' };
+  }
+
+  const { question, expectedAnswer, userAnswer, cardTitle } = body as Record<string, unknown>;
+
+  if (!question || typeof question !== 'string' || question.trim().length === 0) {
+    return { valid: false, error: 'Question is required' };
+  }
+
+  if (!userAnswer || typeof userAnswer !== 'string' || userAnswer.trim().length === 0) {
+    return { valid: false, error: 'User answer is required' };
+  }
+
+  return {
+    valid: true,
+    data: {
+      question: sanitizeString(question, MAX_QUESTION_LENGTH),
+      expectedAnswer: sanitizeString(expectedAnswer, MAX_ANSWER_LENGTH),
+      userAnswer: sanitizeString(userAnswer, MAX_ANSWER_LENGTH),
+      cardTitle: sanitizeString(cardTitle, MAX_TITLE_LENGTH)
+    }
+  };
 }
 
 serve(async (req) => {
@@ -18,15 +56,41 @@ serve(async (req) => {
   }
 
   try {
-    const { question, expectedAnswer, userAnswer, cardTitle }: AnalyzeRequest = await req.json();
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(JSON.stringify({ error: 'Invalid JSON in request body' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Validate input
+    const validation = validateRequest(body);
+    if (!validation.valid) {
+      return new Response(JSON.stringify({ error: validation.error }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const { question, expectedAnswer, userAnswer, cardTitle } = validation.data;
     
     const API_KEY = Deno.env.get('API_APP');
     
     if (!API_KEY) {
-      throw new Error('API_APP key is not configured');
+      console.error('API key not configured');
+      return new Response(JSON.stringify({
+        isValid: true,
+        message: "Merci pour votre réponse !",
+        additions: []
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
-    console.log(`Analyzing response for: ${cardTitle}`);
+    console.log(`Analyzing response for card: ${cardTitle.substring(0, 50)}`);
 
     const response = await fetch('https://api.blackbox.ai/chat/completions', {
       method: 'POST',
@@ -68,6 +132,8 @@ Réponse de l'étudiant: "${userAnswer}"
     });
 
     if (!response.ok) {
+      console.error('External API error:', response.status);
+      
       if (response.status === 429) {
         return new Response(JSON.stringify({ 
           error: 'Limite de requêtes atteinte.' 
@@ -78,13 +144,21 @@ Réponse de l'étudiant: "${userAnswer}"
       }
       if (response.status === 402) {
         return new Response(JSON.stringify({ 
-          error: 'Crédits insuffisants.' 
+          error: 'Service temporairement indisponible.' 
         }), {
-          status: 402,
+          status: 503,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
-      throw new Error(`API error: ${response.status}`);
+      
+      // Return graceful fallback
+      return new Response(JSON.stringify({
+        isValid: true,
+        message: "Merci pour votre réponse !",
+        additions: []
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     const aiResponse = await response.json();
@@ -103,7 +177,7 @@ Réponse de l'étudiant: "${userAnswer}"
         });
       }
     } catch (parseError) {
-      console.error('Failed to parse AI response:', parseError);
+      console.error('Failed to parse AI response');
     }
 
     return new Response(JSON.stringify({
@@ -115,7 +189,7 @@ Réponse de l'étudiant: "${userAnswer}"
     });
 
   } catch (error) {
-    console.error('Error analyzing response:', error);
+    console.error('Error analyzing response');
     return new Response(JSON.stringify({
       isValid: true,
       message: "Merci pour votre réponse !",

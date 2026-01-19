@@ -5,9 +5,49 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Input validation constants
+const MAX_THEME_LENGTH = 200;
+const VALID_LEVELS = ['beginner', 'intermediate', 'expert'] as const;
+
 interface AnalyzeThemeRequest {
   theme: string;
   level: 'beginner' | 'intermediate' | 'expert';
+}
+
+// Sanitize string input
+function sanitizeString(input: unknown, maxLength: number): string {
+  if (typeof input !== 'string') return '';
+  return input.trim().slice(0, maxLength).replace(/[<>]/g, '');
+}
+
+// Validate request input
+function validateRequest(body: unknown): { valid: true; data: AnalyzeThemeRequest } | { valid: false; error: string } {
+  if (!body || typeof body !== 'object') {
+    return { valid: false, error: 'Invalid request body' };
+  }
+
+  const { theme, level } = body as Record<string, unknown>;
+
+  // Validate theme
+  if (!theme || typeof theme !== 'string' || theme.trim().length === 0) {
+    return { valid: false, error: 'Theme is required' };
+  }
+  if (theme.length > MAX_THEME_LENGTH) {
+    return { valid: false, error: `Theme must be less than ${MAX_THEME_LENGTH} characters` };
+  }
+
+  // Validate level
+  if (!level || !VALID_LEVELS.includes(level as typeof VALID_LEVELS[number])) {
+    return { valid: false, error: `Level must be one of: ${VALID_LEVELS.join(', ')}` };
+  }
+
+  return {
+    valid: true,
+    data: {
+      theme: sanitizeString(theme, MAX_THEME_LENGTH),
+      level: level as 'beginner' | 'intermediate' | 'expert'
+    }
+  };
 }
 
 serve(async (req) => {
@@ -16,14 +56,37 @@ serve(async (req) => {
   }
 
   try {
-    const { theme, level }: AnalyzeThemeRequest = await req.json();
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(JSON.stringify({ error: 'Invalid JSON in request body' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Validate input
+    const validation = validateRequest(body);
+    if (!validation.valid) {
+      return new Response(JSON.stringify({ error: validation.error }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const { theme, level } = validation.data;
     
     console.log(`Analyzing theme: "${theme}" for level: ${level}`);
 
     const API_KEY = Deno.env.get('API_APP');
     
     if (!API_KEY) {
-      throw new Error('API_APP key is not configured');
+      console.error('API key not configured');
+      return new Response(JSON.stringify({ error: 'Service temporarily unavailable' }), {
+        status: 503,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     const levelDescriptions = {
@@ -61,14 +124,13 @@ Tu DOIS répondre UNIQUEMENT avec ce JSON, sans aucun texte avant ou après :
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Blackbox API error:', response.status, errorText);
+      console.error('External API error:', response.status);
       
       if (response.status === 402) {
         return new Response(JSON.stringify({ 
-          error: 'Crédits API insuffisants.' 
+          error: 'Service temporairement indisponible.' 
         }), {
-          status: 402,
+          status: 503,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
@@ -82,13 +144,14 @@ Tu DOIS répondre UNIQUEMENT avec ce JSON, sans aucun texte avant ou après :
         });
       }
       
-      throw new Error(`API error: ${response.status}`);
+      return new Response(JSON.stringify({ error: 'Erreur lors de l\'analyse du thème' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     const aiResponse = await response.json();
     const content = aiResponse.choices?.[0]?.message?.content || '';
-    
-    console.log('Raw AI response:', content);
     
     let analysis;
     
@@ -96,9 +159,8 @@ Tu DOIS répondre UNIQUEMENT avec ce JSON, sans aucun texte avant ou après :
     if (jsonMatch) {
       try {
         analysis = JSON.parse(jsonMatch[0]);
-        console.log('Parsed with strategy 1 (JSON match)');
       } catch (e) {
-        console.log('Strategy 1 failed:', e);
+        // Silent fail
       }
     }
     
@@ -107,9 +169,8 @@ Tu DOIS répondre UNIQUEMENT avec ce JSON, sans aucun texte avant ou après :
       if (codeBlockMatch) {
         try {
           analysis = JSON.parse(codeBlockMatch[1].trim());
-          console.log('Parsed with strategy 2 (code block)');
         } catch (e) {
-          console.log('Strategy 2 failed:', e);
+          // Silent fail
         }
       }
     }
@@ -117,14 +178,13 @@ Tu DOIS répondre UNIQUEMENT avec ce JSON, sans aucun texte avant ou après :
     if (!analysis) {
       try {
         analysis = JSON.parse(content.trim());
-        console.log('Parsed with strategy 3 (full content)');
       } catch (e) {
-        console.log('Strategy 3 failed:', e);
+        // Silent fail
       }
     }
     
     if (!analysis || typeof analysis.isValid === 'undefined') {
-      console.log('All parsing strategies failed, using fallback');
+      console.log('Using fallback analysis');
       const isValidTheme = theme.length > 5 && theme.split(' ').length >= 2;
       
       analysis = {
@@ -157,9 +217,9 @@ Tu DOIS répondre UNIQUEMENT avec ce JSON, sans aucun texte avant ou après :
     });
 
   } catch (error) {
-    console.error('Error analyzing theme:', error);
+    console.error('Error analyzing theme');
     return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : 'Erreur lors de l\'analyse du thème' 
+      error: 'Une erreur est survenue lors de l\'analyse du thème' 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
