@@ -89,7 +89,7 @@ export function TodaySessions({ sessions, isLoading }: TodaySessionsProps) {
 
                 {/* Session Info */}
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-semibold text-foreground truncate">
+                  <h4 className="font-semibold text-foreground line-clamp-2 leading-tight text-sm sm:text-base">
                     {session.course?.title || 'Cours'}
                   </h4>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
