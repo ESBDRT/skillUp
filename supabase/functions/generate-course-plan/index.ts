@@ -29,24 +29,24 @@ serve(async (req) => {
     
     console.log(`Generating course plan: theme="${theme}", minutes=${dailyMinutes}, level=${level}, days=${durationDays}`);
 
-    const FEATHERLESS_API_KEY = Deno.env.get('API2');
+    const API_KEY = Deno.env.get('API_APP');
     
-    if (!FEATHERLESS_API_KEY) {
-      throw new Error('API2 key is not configured');
+    if (!API_KEY) {
+      throw new Error('API_APP key is not configured');
     }
 
     const knownConceptsInstruction = knownKeywords && knownKeywords.length > 0
       ? `L'apprenant connaît déjà : ${knownKeywords.join(', ')}. Évite de répéter ces bases.`
       : '';
 
-    const response = await fetch('https://api.featherless.ai/v1/chat/completions', {
+    const response = await fetch('https://api.blackbox.ai/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${FEATHERLESS_API_KEY}`,
+        'Authorization': `Bearer ${API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'mistralai/Mistral-Nemo-Instruct-2407',
+        model: 'blackboxai/google/gemini-2.5-flash',
         messages: [
           {
             role: 'user',
@@ -68,7 +68,7 @@ Tu DOIS répondre UNIQUEMENT avec ce JSON, sans texte avant ou après :
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Featherless API error:', response.status, errorText);
+      console.error('Blackbox API error:', response.status, errorText);
       
       if (response.status === 429) {
         return new Response(JSON.stringify({ 

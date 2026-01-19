@@ -20,10 +20,10 @@ serve(async (req) => {
     
     console.log(`Analyzing theme: "${theme}" for level: ${level}`);
 
-    const FEATHERLESS_API_KEY = Deno.env.get('API2');
+    const API_KEY = Deno.env.get('API_APP');
     
-    if (!FEATHERLESS_API_KEY) {
-      throw new Error('API2 key is not configured');
+    if (!API_KEY) {
+      throw new Error('API_APP key is not configured');
     }
 
     const levelDescriptions = {
@@ -32,14 +32,14 @@ serve(async (req) => {
       expert: 'maîtrise avancée, concepts complexes'
     };
 
-    const response = await fetch('https://api.featherless.ai/v1/chat/completions', {
+    const response = await fetch('https://api.blackbox.ai/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${FEATHERLESS_API_KEY}`,
+        'Authorization': `Bearer ${API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'mistralai/Mistral-Nemo-Instruct-2407',
+        model: 'blackboxai/google/gemini-2.5-flash',
         messages: [
           {
             role: 'user',
@@ -62,7 +62,7 @@ Tu DOIS répondre UNIQUEMENT avec ce JSON, sans aucun texte avant ou après :
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Featherless API error:', response.status, errorText);
+      console.error('Blackbox API error:', response.status, errorText);
       
       if (response.status === 402) {
         return new Response(JSON.stringify({ 
