@@ -77,26 +77,26 @@ serve(async (req) => {
     
     console.log(`Generating course: theme="${theme}", minutes=${dailyMinutes}, level=${level}`);
 
-    const FEATHERLESS_API_KEY = Deno.env.get('API2');
+    const API_KEY = Deno.env.get('API_APP');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
     
-    if (!FEATHERLESS_API_KEY) {
-      throw new Error('API2 key is not configured');
+    if (!API_KEY) {
+      throw new Error('API_APP key is not configured');
     }
 
     const hasPlan = coursePlan && coursePlan.days && coursePlan.days.length > 0;
     const maxSlides = 5;
     const quizCount = 3;
 
-    const response = await fetch('https://api.featherless.ai/v1/chat/completions', {
+    const response = await fetch('https://api.blackbox.ai/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${FEATHERLESS_API_KEY}`,
+        'Authorization': `Bearer ${API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'mistralai/Mistral-Nemo-Instruct-2407',
+        model: 'blackboxai/google/gemini-2.5-flash',
         messages: [
           {
             role: 'user',
@@ -121,7 +121,7 @@ Réponds UNIQUEMENT avec ce JSON :
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Featherless API error:', response.status, errorText);
+      console.error('Blackbox API error:', response.status, errorText);
       
       if (response.status === 429) {
         return new Response(JSON.stringify({ 

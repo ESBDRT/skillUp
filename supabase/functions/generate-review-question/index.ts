@@ -21,9 +21,9 @@ serve(async (req) => {
       questionType: 'flashcard' | 'qcm' | 'open' 
     };
 
-    const FEATHERLESS_API_KEY = Deno.env.get("API2");
-    if (!FEATHERLESS_API_KEY) {
-      throw new Error("API2 key is not configured");
+    const API_KEY = Deno.env.get("API_APP");
+    if (!API_KEY) {
+      throw new Error("API_APP key is not configured");
     }
 
     const prompt = `Génère une question à choix multiples (QCM) pour tester ce concept:
@@ -48,14 +48,14 @@ Réponds UNIQUEMENT avec ce JSON :
   "explanation": "Explication de la bonne réponse"
 }`;
 
-    const response = await fetch("https://api.featherless.ai/v1/chat/completions", {
+    const response = await fetch("https://api.blackbox.ai/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${FEATHERLESS_API_KEY}`,
+        Authorization: `Bearer ${API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "mistralai/Mistral-Nemo-Instruct-2407",
+        model: "blackboxai/google/gemini-2.5-flash",
         messages: [
           { 
             role: "system", 
