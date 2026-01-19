@@ -127,12 +127,15 @@ const CoursePlayer = () => {
                     isCorrect: i === correctIdx,
                   };
                 }
-                // Handle object options with isCorrect property
+                // Handle object options - prioritize existing isCorrect property
                 if (typeof opt === 'object' && opt !== null) {
+                  // If isCorrect is explicitly defined in the option, use it
+                  // Only fall back to correctIndex if isCorrect is undefined
+                  const hasExplicitIsCorrect = 'isCorrect' in opt;
                   return {
                     id: opt.id || `opt-${i}`,
                     text: opt.text || String(opt),
-                    isCorrect: opt.isCorrect === true || i === correctIdx,
+                    isCorrect: hasExplicitIsCorrect ? opt.isCorrect === true : i === correctIdx,
                   };
                 }
                 return { id: `opt-${i}`, text: String(opt), isCorrect: i === correctIdx };
@@ -383,7 +386,13 @@ const CoursePlayer = () => {
     }
   };
 
+  // Only allow tap navigation for non-interactive cards
+  const isInteractiveCard = currentCard && ['quiz', 'flashcard', 'open-question', 'slider'].includes(currentCard.type);
+
   const handleTap = (e: React.MouseEvent) => {
+    // Disable tap navigation for interactive cards
+    if (isInteractiveCard) return;
+
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const isRightSide = x > rect.width / 2;
@@ -440,36 +449,84 @@ const CoursePlayer = () => {
     }
   };
 
+  // Card type badges and labels
+  const getCardTypeBadge = () => {
+    if (!currentCard) return null;
+    const badges: Record<string, { icon: string; label: string; color: string }> = {
+      info: { icon: '📖', label: 'Cours', color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
+      quiz: { icon: '❓', label: 'Quiz', color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
+      flashcard: { icon: '🔄', label: 'Flashcard', color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+      'open-question': { icon: '📝', label: 'Question', color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400' },
+      slider: { icon: '🎚️', label: 'Estimation', color: 'bg-pink-500/10 text-pink-600 dark:text-pink-400' },
+      lesson: { icon: '📚', label: 'Leçon', color: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' },
+    };
+    return badges[currentCard.type] || badges.info;
+  };
+
+  const cardTypeBadge = getCardTypeBadge();
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur safe-top">
-        <div className="px-4 py-3 flex items-center gap-4">
-          <button
-            onClick={handleExit}
-            className="p-2 hover:bg-secondary rounded-full transition-colors"
-          >
-            <X className="w-5 h-5 text-foreground" />
-          </button>
-
-          <StoryProgress
-            current={currentCardIndex}
-            total={cardsToPlay.length}
-          />
-
-          {isPreview && (
+      {/* Enhanced Header */}
+      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border/50 safe-top">
+        <div className="px-4 py-3 space-y-3">
+          {/* Top row: Exit, XP, Save */}
+          <div className="flex items-center justify-between">
             <button
-              onClick={() => saveProgress(true)}
-              disabled={isSaving}
-              className="p-2 hover:bg-secondary rounded-full transition-colors"
-              title="Sauvegarder la progression"
+              onClick={handleExit}
+              className="p-2 -ml-2 hover:bg-secondary rounded-full transition-colors"
             >
-              {isSaving ? (
-                <Loader2 className="w-5 h-5 text-primary animate-spin" />
-              ) : (
-                <Save className="w-5 h-5 text-primary" />
-              )}
+              <X className="w-5 h-5 text-foreground" />
             </button>
+
+            {/* Session XP */}
+            <div className="flex items-center gap-2">
+              <motion.div 
+                key={earnedXP}
+                initial={{ scale: 1.2 }}
+                animate={{ scale: 1 }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 rounded-full"
+              >
+                <span className="text-sm">⚡</span>
+                <span className="text-sm font-bold text-primary">{earnedXP} XP</span>
+              </motion.div>
+
+              {isPreview && (
+                <button
+                  onClick={() => saveProgress(true)}
+                  disabled={isSaving}
+                  className="p-2 hover:bg-secondary rounded-full transition-colors"
+                  title="Sauvegarder la progression"
+                >
+                  {isSaving ? (
+                    <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                  ) : (
+                    <Save className="w-5 h-5 text-primary" />
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Progress bar row */}
+          <div className="flex items-center gap-3">
+            <StoryProgress
+              current={currentCardIndex}
+              total={cardsToPlay.length}
+            />
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
+              {currentCardIndex + 1}/{cardsToPlay.length}
+            </span>
+          </div>
+
+          {/* Card type indicator */}
+          {cardTypeBadge && (
+            <div className="flex items-center gap-2">
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${cardTypeBadge.color}`}>
+                <span>{cardTypeBadge.icon}</span>
+                {cardTypeBadge.label}
+              </span>
+            </div>
           )}
         </div>
       </header>
@@ -518,12 +575,42 @@ const CoursePlayer = () => {
 
       <AudioPlayer text={getCardTextContent()} />
 
+      {/* Enhanced Footer with Navigation */}
       <footer className="px-4 py-4 border-t border-border bg-card safe-bottom">
-        <div className="flex items-center justify-end">
-          <button className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full hover:bg-primary/20 transition-colors">
-            <MessageCircle className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium text-primary">Aide IA</span>
+        <div className="flex items-center justify-between gap-3">
+          {/* Previous button - only for info cards */}
+          <button
+            onClick={handlePrev}
+            disabled={currentCardIndex === 0}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-colors ${
+              currentCardIndex === 0
+                ? 'opacity-30 cursor-not-allowed bg-muted text-muted-foreground'
+                : 'bg-secondary hover:bg-secondary/80 text-foreground'
+            }`}
+          >
+            ← Précédent
           </button>
+
+          {/* AI Help - smaller */}
+          <button className="p-2.5 bg-primary/10 rounded-full hover:bg-primary/20 transition-colors">
+            <MessageCircle className="w-4 h-4 text-primary" />
+          </button>
+
+          {/* Next button - only for info cards (interactive cards have their own) */}
+          {!isInteractiveCard && (
+            <button
+              onClick={() => {
+                handleXPGain(currentCard.xpReward);
+                handleNext();
+              }}
+              className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-primary/90 transition-colors"
+            >
+              Suivant →
+            </button>
+          )}
+
+          {/* Placeholder to maintain layout when no next button */}
+          {isInteractiveCard && <div className="w-24" />}
         </div>
       </footer>
     </div>
