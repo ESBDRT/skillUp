@@ -6,6 +6,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Input validation constants
+const MAX_TITLE_LENGTH = 200;
+const MAX_DESCRIPTION_LENGTH = 1000;
+const MAX_CONTENT_LENGTH = 5000;
+const MAX_COURSES = 50;
+const MAX_CARDS_PER_COURSE = 100;
+const VALID_LEVELS = ['beginner', 'intermediate', 'advanced'] as const;
+const VALID_CARD_TYPES = ['lesson', 'quiz', 'flashcard', 'info', 'slider', 'open-question'] as const;
+
 interface CourseSection {
   title: string;
   subtitle?: string;
@@ -46,6 +55,102 @@ interface ImportResult {
   errors: Array<{ courseIndex: number; courseTitle: string; error: string }>;
 }
 
+// Sanitize string input
+function sanitizeString(input: unknown, maxLength: number): string {
+  if (typeof input !== 'string') return '';
+  return input.trim().slice(0, maxLength).replace(/[<>]/g, '');
+}
+
+// Validate a single card
+function validateCard(card: unknown, index: number): { valid: true; data: CourseCard } | { valid: false; error: string } {
+  if (!card || typeof card !== 'object') {
+    return { valid: false, error: `Card ${index + 1}: Invalid card object` };
+  }
+
+  const { type, title, content } = card as Record<string, unknown>;
+
+  if (!type || !VALID_CARD_TYPES.includes(type as typeof VALID_CARD_TYPES[number])) {
+    return { valid: false, error: `Card ${index + 1}: Invalid card type` };
+  }
+
+  if (!title || typeof title !== 'string' || title.trim().length === 0) {
+    return { valid: false, error: `Card ${index + 1}: Title is required` };
+  }
+
+  if (!content || typeof content !== 'string') {
+    return { valid: false, error: `Card ${index + 1}: Content is required` };
+  }
+
+  const cardData = card as Record<string, unknown>;
+  
+  return {
+    valid: true,
+    data: {
+      type: type as CourseCard['type'],
+      title: sanitizeString(title, MAX_TITLE_LENGTH),
+      content: sanitizeString(content, MAX_CONTENT_LENGTH),
+      imageUrl: cardData.imageUrl ? sanitizeString(cardData.imageUrl, 500) : undefined,
+      flashcardBack: cardData.flashcardBack ? sanitizeString(cardData.flashcardBack, MAX_CONTENT_LENGTH) : undefined,
+      options: Array.isArray(cardData.options) ? cardData.options : undefined,
+      sliderConfig: cardData.sliderConfig as CourseCard['sliderConfig'],
+      xpReward: typeof cardData.xpReward === 'number' ? Math.min(Math.max(0, cardData.xpReward), 1000) : 10,
+      sections: Array.isArray(cardData.sections) ? cardData.sections : undefined
+    }
+  };
+}
+
+// Validate a single course
+function validateCourse(course: unknown, index: number): { valid: true; data: ImportCourse } | { valid: false; error: string } {
+  if (!course || typeof course !== 'object') {
+    return { valid: false, error: `Course ${index + 1}: Invalid course object` };
+  }
+
+  const { title, category, level, cards, description, icon, estimatedMinutes } = course as Record<string, unknown>;
+
+  if (!title || typeof title !== 'string' || title.trim().length === 0) {
+    return { valid: false, error: `Course ${index + 1}: Title is required` };
+  }
+
+  if (!category || typeof category !== 'string') {
+    return { valid: false, error: `Course ${index + 1}: Category is required` };
+  }
+
+  if (!level || !VALID_LEVELS.includes(level as typeof VALID_LEVELS[number])) {
+    return { valid: false, error: `Course ${index + 1}: Invalid level` };
+  }
+
+  if (!Array.isArray(cards) || cards.length === 0) {
+    return { valid: false, error: `Course ${index + 1}: At least one card is required` };
+  }
+
+  if (cards.length > MAX_CARDS_PER_COURSE) {
+    return { valid: false, error: `Course ${index + 1}: Maximum ${MAX_CARDS_PER_COURSE} cards allowed` };
+  }
+
+  // Validate all cards
+  const validatedCards: CourseCard[] = [];
+  for (let i = 0; i < cards.length; i++) {
+    const cardValidation = validateCard(cards[i], i);
+    if (!cardValidation.valid) {
+      return { valid: false, error: `Course ${index + 1}, ${cardValidation.error}` };
+    }
+    validatedCards.push(cardValidation.data);
+  }
+
+  return {
+    valid: true,
+    data: {
+      title: sanitizeString(title, MAX_TITLE_LENGTH),
+      description: description ? sanitizeString(description, MAX_DESCRIPTION_LENGTH) : undefined,
+      icon: icon ? sanitizeString(icon, 10) : '📚',
+      category: sanitizeString(category, 100),
+      level: level as 'beginner' | 'intermediate' | 'advanced',
+      estimatedMinutes: typeof estimatedMinutes === 'number' ? Math.min(Math.max(1, estimatedMinutes), 600) : 10,
+      cards: validatedCards
+    }
+  };
+}
+
 // POC User ID - matches the one in src/lib/constants.ts
 const POC_USER_ID = "00000000-0000-0000-0000-000000000001";
 
@@ -57,24 +162,57 @@ serve(async (req) => {
 
   try {
     // Create Supabase client with service role for POC
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Missing database credentials');
+      return new Response(
+        JSON.stringify({ error: 'Service temporarily unavailable' }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Use POC user ID (no auth required for POC)
     const userId = POC_USER_ID;
 
     // Parse request body
-    const body: ImportRequest = await req.json();
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON in request body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     
-    if (!body.courses || !Array.isArray(body.courses)) {
+    if (!body || typeof body !== 'object') {
+      return new Response(
+        JSON.stringify({ error: 'Invalid request body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { courses } = body as Record<string, unknown>;
+    
+    if (!courses || !Array.isArray(courses)) {
       return new Response(
         JSON.stringify({ error: 'Invalid format: courses array required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Starting import of ${body.courses.length} courses for POC user ${userId}`);
+    if (courses.length > MAX_COURSES) {
+      return new Response(
+        JSON.stringify({ error: `Maximum ${MAX_COURSES} courses allowed per import` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`Starting import of ${courses.length} courses`);
 
     const result: ImportResult = {
       success: true,
@@ -84,19 +222,21 @@ serve(async (req) => {
     };
 
     // Process each course
-    for (let i = 0; i < body.courses.length; i++) {
-      const course = body.courses[i];
+    for (let i = 0; i < courses.length; i++) {
+      // Validate course
+      const validation = validateCourse(courses[i], i);
+      if (!validation.valid) {
+        result.errors.push({
+          courseIndex: i,
+          courseTitle: (courses[i] as Record<string, unknown>)?.title?.toString() || `Course ${i + 1}`,
+          error: validation.error
+        });
+        continue;
+      }
+
+      const course = validation.data;
       
       try {
-        // Validate required fields
-        if (!course.title || !course.category || !course.level) {
-          throw new Error('Missing required fields: title, category, level');
-        }
-
-        if (!course.cards || !Array.isArray(course.cards) || course.cards.length === 0) {
-          throw new Error('Course must have at least one card');
-        }
-
         // Calculate total XP
         const totalXp = course.cards.reduce((sum, card) => sum + (card.xpReward || 10), 0);
 
@@ -118,10 +258,10 @@ serve(async (req) => {
           .single();
 
         if (courseError) {
-          throw new Error(`Failed to create course: ${courseError.message}`);
+          throw new Error('Failed to create course');
         }
 
-        console.log(`Created course "${course.title}" with ID ${courseData.id}`);
+        console.log(`Created course "${course.title}"`);
 
         // Insert cards
         const cardsToInsert = course.cards.map((card, index) => ({
@@ -155,7 +295,7 @@ serve(async (req) => {
         if (cardsError) {
           // Rollback: delete the course if cards failed
           await supabase.from('courses').delete().eq('id', courseData.id);
-          throw new Error(`Failed to create cards: ${cardsError.message}`);
+          throw new Error('Failed to create cards');
         }
 
         result.coursesImported++;
@@ -163,13 +303,12 @@ serve(async (req) => {
         console.log(`Imported ${course.cards.length} cards for course "${course.title}"`);
 
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
         result.errors.push({
           courseIndex: i,
-          courseTitle: course.title || `Course ${i + 1}`,
-          error: errorMessage
+          courseTitle: course.title,
+          error: 'Import failed'
         });
-        console.error(`Error importing course ${i}: ${errorMessage}`);
+        console.error(`Error importing course ${i}`);
       }
     }
 
@@ -186,10 +325,9 @@ serve(async (req) => {
     );
 
   } catch (err) {
-    console.error('Import error:', err);
-    const errorMessage = err instanceof Error ? err.message : 'Import failed';
+    console.error('Import error');
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: 'Une erreur est survenue lors de l\'import' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

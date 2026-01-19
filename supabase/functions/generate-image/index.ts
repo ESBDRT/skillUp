@@ -6,6 +6,31 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Input validation constants
+const MAX_KEYWORD_LENGTH = 100;
+const MAX_THEME_LENGTH = 200;
+
+// Sanitize string input
+function sanitizeString(input: unknown, maxLength: number): string {
+  if (typeof input !== 'string') return '';
+  return input.trim().slice(0, maxLength).replace(/[<>]/g, '');
+}
+
+// Validate request input
+function validateRequest(body: unknown): { valid: true; keyword: string; theme: string } | { valid: false; error: string } {
+  if (!body || typeof body !== 'object') {
+    return { valid: false, error: 'Invalid request body' };
+  }
+
+  const { keyword, theme } = body as Record<string, unknown>;
+
+  return {
+    valid: true,
+    keyword: sanitizeString(keyword, MAX_KEYWORD_LENGTH) || 'education',
+    theme: sanitizeString(theme, MAX_THEME_LENGTH) || 'education'
+  };
+}
+
 // Reliable placeholder fallback
 function getFallbackImage(keyword: string): string {
   const cleanKeyword = encodeURIComponent(keyword.toLowerCase().replace(/[^a-z0-9\s]/g, '').substring(0, 30) || 'education');
@@ -19,7 +44,7 @@ async function uploadToStorage(base64Data: string, keyword: string): Promise<str
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      console.error('Missing Supabase credentials for storage upload');
+      console.error('Missing storage credentials');
       return null;
     }
     
@@ -50,7 +75,7 @@ async function uploadToStorage(base64Data: string, keyword: string): Promise<str
       });
     
     if (error) {
-      console.error('Storage upload error:', error);
+      console.error('Storage upload error');
       return null;
     }
     
@@ -59,11 +84,11 @@ async function uploadToStorage(base64Data: string, keyword: string): Promise<str
       .from('course-images')
       .getPublicUrl(fileName);
     
-    console.log(`Image uploaded successfully: ${publicUrl}`);
+    console.log('Image uploaded successfully');
     return publicUrl;
     
   } catch (error) {
-    console.error('Error uploading to storage:', error);
+    console.error('Error uploading to storage');
     return null;
   }
 }
@@ -74,7 +99,28 @@ serve(async (req) => {
   }
 
   try {
-    const { keyword, theme } = await req.json();
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(JSON.stringify({ 
+        imageUrl: getFallbackImage('education')
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Validate input
+    const validation = validateRequest(body);
+    if (!validation.valid) {
+      return new Response(JSON.stringify({ 
+        imageUrl: getFallbackImage('education')
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const { keyword, theme } = validation;
     const subject = keyword || theme || 'education';
     
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -93,7 +139,7 @@ Style: Flat design, vibrant colors, professional, suitable for a learning app.
 The image should be visually clear and represent the concept well.
 No text in the image. High quality, 800x600 aspect ratio.`;
 
-    console.log(`Generating AI image for: ${subject}`);
+    console.log(`Generating AI image for: ${subject.substring(0, 50)}`);
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -114,8 +160,7 @@ No text in the image. High quality, 800x600 aspect ratio.`;
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('AI Gateway error:', response.status, errorText);
+      console.error('AI Gateway error:', response.status);
       
       return new Response(JSON.stringify({ 
         imageUrl: getFallbackImage(subject)
@@ -144,7 +189,7 @@ No text in the image. High quality, 800x600 aspect ratio.`;
     const publicUrl = await uploadToStorage(imageData, subject);
     
     if (publicUrl) {
-      console.log('Image stored successfully in Storage');
+      console.log('Image stored successfully');
       return new Response(JSON.stringify({ 
         imageUrl: publicUrl
       }), {
@@ -161,10 +206,9 @@ No text in the image. High quality, 800x600 aspect ratio.`;
     });
 
   } catch (error) {
-    console.error('Error generating image:', error);
-    const fallbackKeyword = 'education';
+    console.error('Error generating image');
     return new Response(JSON.stringify({ 
-      imageUrl: getFallbackImage(fallbackKeyword)
+      imageUrl: getFallbackImage('education')
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });

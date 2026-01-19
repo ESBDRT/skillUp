@@ -5,9 +5,61 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Input validation constants
+const MAX_TITLE_LENGTH = 200;
+const MAX_CONTENT_LENGTH = 2000;
+const VALID_QUESTION_TYPES = ['flashcard', 'qcm', 'open'] as const;
+
 interface Concept {
   concept_title: string;
   concept_content: string | null;
+}
+
+interface GenerateReviewRequest {
+  concept: Concept;
+  questionType: 'flashcard' | 'qcm' | 'open';
+}
+
+// Sanitize string input
+function sanitizeString(input: unknown, maxLength: number): string {
+  if (typeof input !== 'string') return '';
+  return input.trim().slice(0, maxLength).replace(/[<>]/g, '');
+}
+
+// Validate request input
+function validateRequest(body: unknown): { valid: true; data: GenerateReviewRequest } | { valid: false; error: string } {
+  if (!body || typeof body !== 'object') {
+    return { valid: false, error: 'Invalid request body' };
+  }
+
+  const { concept, questionType } = body as Record<string, unknown>;
+
+  // Validate concept
+  if (!concept || typeof concept !== 'object') {
+    return { valid: false, error: 'Concept is required' };
+  }
+
+  const { concept_title, concept_content } = concept as Record<string, unknown>;
+
+  if (!concept_title || typeof concept_title !== 'string' || concept_title.trim().length === 0) {
+    return { valid: false, error: 'Concept title is required' };
+  }
+
+  // Validate questionType
+  if (!questionType || !VALID_QUESTION_TYPES.includes(questionType as typeof VALID_QUESTION_TYPES[number])) {
+    return { valid: false, error: `Question type must be one of: ${VALID_QUESTION_TYPES.join(', ')}` };
+  }
+
+  return {
+    valid: true,
+    data: {
+      concept: {
+        concept_title: sanitizeString(concept_title, MAX_TITLE_LENGTH),
+        concept_content: concept_content ? sanitizeString(concept_content, MAX_CONTENT_LENGTH) : null
+      },
+      questionType: questionType as 'flashcard' | 'qcm' | 'open'
+    }
+  };
 }
 
 serve(async (req) => {
@@ -16,14 +68,46 @@ serve(async (req) => {
   }
 
   try {
-    const { concept, questionType } = await req.json() as { 
-      concept: Concept; 
-      questionType: 'flashcard' | 'qcm' | 'open' 
-    };
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(JSON.stringify({ error: 'Invalid JSON in request body' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Validate input
+    const validation = validateRequest(body);
+    if (!validation.valid) {
+      return new Response(JSON.stringify({ error: validation.error }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const { concept, questionType } = validation.data;
 
     const API_KEY = Deno.env.get("API_APP");
     if (!API_KEY) {
-      throw new Error("API_APP key is not configured");
+      console.error('API key not configured');
+      // Return fallback question
+      return new Response(JSON.stringify({ 
+        type: 'qcm',
+        data: {
+          question: `Que savez-vous sur "${concept.concept_title}" ?`,
+          options: [
+            { id: 'a', text: 'Je connais ce concept', isCorrect: true },
+            { id: 'b', text: 'Je ne suis pas sûr', isCorrect: false },
+            { id: 'c', text: 'Je dois réviser', isCorrect: false },
+            { id: 'd', text: 'C\'est nouveau pour moi', isCorrect: false },
+          ],
+          explanation: 'Continuez à réviser ce concept.'
+        }
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const prompt = `Génère une question à choix multiples (QCM) pour tester ce concept:
@@ -69,19 +153,37 @@ Réponds UNIQUEMENT avec ce JSON :
     });
 
     if (!response.ok) {
+      console.error('External API error:', response.status);
+      
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded" }), {
+        return new Response(JSON.stringify({ error: "Limite de requêtes atteinte" }), {
           status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Payment required" }), {
-          status: 402,
+        return new Response(JSON.stringify({ error: "Service temporairement indisponible" }), {
+          status: 503,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      throw new Error(`API error: ${response.status}`);
+      
+      // Return fallback
+      return new Response(JSON.stringify({ 
+        type: 'qcm',
+        data: {
+          question: `Que savez-vous sur "${concept.concept_title}" ?`,
+          options: [
+            { id: 'a', text: 'Je connais ce concept', isCorrect: true },
+            { id: 'b', text: 'Je ne suis pas sûr', isCorrect: false },
+            { id: 'c', text: 'Je dois réviser', isCorrect: false },
+            { id: 'd', text: 'C\'est nouveau pour moi', isCorrect: false },
+          ],
+          explanation: 'Continuez à réviser ce concept.'
+        }
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const data = await response.json();
@@ -104,7 +206,7 @@ Réponds UNIQUEMENT avec ce JSON :
         explanation: parsed.explanation || 'Revoyez ce concept.'
       };
     } catch (e) {
-      console.error('Failed to parse AI response:', content);
+      console.error('Failed to parse AI response');
       result = {
         question: `Que savez-vous sur "${concept.concept_title}" ?`,
         options: [
@@ -125,9 +227,9 @@ Réponds UNIQUEMENT avec ce JSON :
     });
 
   } catch (error) {
-    console.error('Error generating review question:', error);
+    console.error('Error generating review question');
     return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : 'Unknown error' 
+      error: 'Une erreur est survenue' 
     }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
