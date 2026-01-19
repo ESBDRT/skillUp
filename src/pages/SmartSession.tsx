@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Brain, ChevronLeft, CheckCircle, XCircle, RotateCcw, Trophy, Loader2, Send, Lightbulb } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useMemoryConcepts, MemoryConcept } from '@/hooks/useMemoryConcepts';
 import { supabase } from '@/integrations/supabase/client';
 import confetti from 'canvas-confetti';
 import { toast } from 'sonner';
-
 type QuestionType = 'flashcard' | 'qcm' | 'open';
 
 interface QCMData {
@@ -36,12 +35,14 @@ interface GeneratedQuestion {
 
 const SmartSession = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { concepts, getConceptsForReview, updateConceptAfterReview, loading } = useMemoryConcepts();
   
   const [sessionConcepts, setSessionConcepts] = useState<MemoryConcept[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [sessionComplete, setSessionComplete] = useState(false);
   const [stats, setStats] = useState({ correct: 0, incorrect: 0 });
+  const [isTargeted, setIsTargeted] = useState(false);
   
   // Question generation state
   const [currentQuestion, setCurrentQuestion] = useState<GeneratedQuestion | null>(null);
@@ -57,11 +58,40 @@ const SmartSession = () => {
 
   useEffect(() => {
     if (!loading && concepts.length > 0) {
-      const reviewConcepts = getConceptsForReview();
-      const shuffled = [...reviewConcepts].sort(() => Math.random() - 0.5).slice(0, 10);
-      setSessionConcepts(shuffled);
+      const isTargetedSession = searchParams.get('targeted') === 'true';
+      setIsTargeted(isTargetedSession);
+      
+      if (isTargetedSession) {
+        // Load targeted concepts from sessionStorage
+        const storedIds = sessionStorage.getItem('targetedConceptIds');
+        if (storedIds) {
+          try {
+            const conceptIds = JSON.parse(storedIds) as string[];
+            const targetedConcepts = concepts.filter(c => conceptIds.includes(c.id));
+            const shuffled = [...targetedConcepts].sort(() => Math.random() - 0.5);
+            setSessionConcepts(shuffled);
+            // Clean up sessionStorage
+            sessionStorage.removeItem('targetedConceptIds');
+          } catch (e) {
+            // Fallback to regular review
+            const reviewConcepts = getConceptsForReview();
+            const shuffled = [...reviewConcepts].sort(() => Math.random() - 0.5).slice(0, 10);
+            setSessionConcepts(shuffled);
+          }
+        } else {
+          // Fallback to regular review
+          const reviewConcepts = getConceptsForReview();
+          const shuffled = [...reviewConcepts].sort(() => Math.random() - 0.5).slice(0, 10);
+          setSessionConcepts(shuffled);
+        }
+      } else {
+        // Regular smart session
+        const reviewConcepts = getConceptsForReview();
+        const shuffled = [...reviewConcepts].sort(() => Math.random() - 0.5).slice(0, 10);
+        setSessionConcepts(shuffled);
+      }
     }
-  }, [loading, concepts, getConceptsForReview]);
+  }, [loading, concepts, getConceptsForReview, searchParams]);
 
   const currentConcept = sessionConcepts[currentIndex];
 
@@ -227,10 +257,10 @@ const SmartSession = () => {
     return (
       <div className="min-h-screen bg-background p-4">
         <header className="flex items-center gap-4 mb-8">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/brain')}>
-            <ChevronLeft className="w-6 h-6" />
-          </Button>
-          <h1 className="text-xl font-bold">Smart Session</h1>
+        <Button variant="ghost" size="icon" onClick={() => navigate('/brain')}>
+          <ChevronLeft className="w-6 h-6" />
+        </Button>
+        <h1 className="text-xl font-bold">{isTargeted ? 'Session ciblée' : 'Smart Session'}</h1>
         </header>
         <div className="flex flex-col items-center justify-center py-20">
           <Trophy className="w-20 h-20 text-success mb-4" />

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Brain as BrainIcon, Zap, RefreshCw, Trash2, Filter, ChevronDown, ChevronUp, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -7,7 +7,11 @@ import BottomNav from '@/components/BottomNav';
 import MemoryHealthGauge from '@/components/MemoryHealthGauge';
 import MemoryStats from '@/components/MemoryStats';
 import ConceptCard from '@/components/ConceptCard';
-import { useMemoryConcepts } from '@/hooks/useMemoryConcepts';
+import ConceptSearch, { SortOption } from '@/components/ConceptSearch';
+import ReviewStreak from '@/components/ReviewStreak';
+import TargetedSessionModal from '@/components/TargetedSessionModal';
+import { useMemoryConcepts, MemoryConcept } from '@/hooks/useMemoryConcepts';
+import { useUserProgress } from '@/hooks/useUserProgress';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   AlertDialog,
@@ -40,12 +44,18 @@ const Brain = () => {
     deleteConcept,
     refetch,
   } = useMemoryConcepts();
+  
+  const { profile } = useUserProgress();
 
   const [filter, setFilter] = useState<FilterType>('all');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [weeklyStats, setWeeklyStats] = useState({ totalReviews: 0, correctReviews: 0 });
   const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<'flat' | 'grouped'>('grouped');
+  
+  // Search and sort state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<SortOption>('next-review');
 
   const averageStrength = getAverageMemoryStrength();
   const atRiskCount = getAtRiskConcepts().length;
@@ -82,21 +92,12 @@ const Brain = () => {
     });
   };
 
-  const filteredConcepts = concepts.filter((concept) => {
-    switch (filter) {
-      case 'danger':
-        return concept.memory_strength < 40;
-      case 'warning':
-        return concept.memory_strength >= 40 && concept.memory_strength < 70;
-      case 'solid':
-        return concept.memory_strength >= 70;
-      default:
-        return true;
-    }
-  });
+  // Filter, search, and sort concepts
+  const processedConcepts = useMemo(() => {
+    let result = [...concepts];
 
-  const filterConceptsInCourse = (courseConcepts: typeof concepts) => {
-    return courseConcepts.filter((concept) => {
+    // Apply filter
+    result = result.filter((concept) => {
       switch (filter) {
         case 'danger':
           return concept.memory_strength < 40;
@@ -108,6 +109,76 @@ const Brain = () => {
           return true;
       }
     });
+
+    // Apply search
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(c => 
+        c.concept_title.toLowerCase().includes(query) ||
+        c.concept_content?.toLowerCase().includes(query) ||
+        c.course_title?.toLowerCase().includes(query)
+      );
+    }
+
+    // Apply sort
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case 'strength-asc':
+          return a.memory_strength - b.memory_strength;
+        case 'strength-desc':
+          return b.memory_strength - a.memory_strength;
+        case 'next-review':
+          return new Date(a.next_review_at).getTime() - new Date(b.next_review_at).getTime();
+        case 'name':
+          return a.concept_title.localeCompare(b.concept_title);
+        default:
+          return 0;
+      }
+    });
+
+    return result;
+  }, [concepts, filter, searchQuery, sortBy]);
+
+  const filterConceptsInCourse = (courseConcepts: MemoryConcept[]) => {
+    let result = courseConcepts.filter((concept) => {
+      switch (filter) {
+        case 'danger':
+          return concept.memory_strength < 40;
+        case 'warning':
+          return concept.memory_strength >= 40 && concept.memory_strength < 70;
+        case 'solid':
+          return concept.memory_strength >= 70;
+        default:
+          return true;
+      }
+    });
+
+    // Apply search
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(c => 
+        c.concept_title.toLowerCase().includes(query) ||
+        c.concept_content?.toLowerCase().includes(query)
+      );
+    }
+
+    // Apply sort
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case 'strength-asc':
+          return a.memory_strength - b.memory_strength;
+        case 'strength-desc':
+          return b.memory_strength - a.memory_strength;
+        case 'next-review':
+          return new Date(a.next_review_at).getTime() - new Date(b.next_review_at).getTime();
+        case 'name':
+          return a.concept_title.localeCompare(b.concept_title);
+        default:
+          return 0;
+      }
+    });
+
+    return result;
   };
 
   const handleDelete = async () => {
@@ -121,6 +192,12 @@ const Brain = () => {
     navigate('/smart-session');
   };
 
+  const handleStartTargetedSession = (conceptIds: string[]) => {
+    // Store targeted concept IDs in sessionStorage for SmartSession to use
+    sessionStorage.setItem('targetedConceptIds', JSON.stringify(conceptIds));
+    navigate('/smart-session?targeted=true');
+  };
+
   const filters: { key: FilterType; label: string; color: string }[] = [
     { key: 'all', label: 'Tous', color: 'bg-primary' },
     { key: 'danger', label: 'En danger', color: 'bg-destructive' },
@@ -128,11 +205,14 @@ const Brain = () => {
     { key: 'solid', label: 'Solides', color: 'bg-success' },
   ];
 
-  const getCourseStats = (courseConcepts: typeof concepts) => {
+  const getCourseStats = (courseConcepts: MemoryConcept[]) => {
     const danger = courseConcepts.filter(c => c.memory_strength < 40).length;
     const warning = courseConcepts.filter(c => c.memory_strength >= 40 && c.memory_strength < 70).length;
     return { danger, warning, total: courseConcepts.length };
   };
+
+  // Calculate today's reviews count
+  const todayReviews = weeklyStats.totalReviews; // Simplified - you could filter by today only
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -159,6 +239,17 @@ const Brain = () => {
       </motion.header>
 
       <div className="px-4 py-6 space-y-6">
+        {/* Streak Widget */}
+        {!loading && profile && (
+          <ReviewStreak
+            streakDays={profile.streak_count}
+            lastActivityDate={profile.last_activity_date}
+            dailyGoal={profile.daily_goal_minutes}
+            todayReviews={todayReviews}
+            weeklyStats={weeklyStats}
+          />
+        )}
+
         {/* Memory Health Gauge */}
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
@@ -211,22 +302,43 @@ const Brain = () => {
           </div>
         </motion.div>
 
-        {/* Smart Session Button */}
+        {/* Session Buttons */}
         {reviewCount > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
+            className="space-y-3"
           >
             <Button
               onClick={handleStartSmartSession}
               className="w-full py-6 text-lg font-semibold bg-gradient-to-r from-primary to-primary/80"
             >
               <Zap className="w-5 h-5 mr-2" />
-              Lancer une Smart Session ({reviewCount})
+              Smart Session ({reviewCount})
             </Button>
+            
+            <TargetedSessionModal
+              concepts={concepts}
+              conceptsByCourse={conceptsByCourse}
+              onStartSession={handleStartTargetedSession}
+            />
           </motion.div>
         )}
+
+        {/* Search Bar */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+        >
+          <ConceptSearch
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+          />
+        </motion.div>
 
         {/* Filter Chips + View Toggle */}
         <motion.div
@@ -266,7 +378,12 @@ const Brain = () => {
         {/* Concepts List */}
         <div className="space-y-3">
           <h2 className="text-lg font-semibold text-foreground">
-            Concepts ({filteredConcepts.length})
+            Concepts ({processedConcepts.length})
+            {searchQuery && (
+              <span className="text-sm font-normal text-muted-foreground ml-2">
+                pour "{searchQuery}"
+              </span>
+            )}
           </h2>
 
           {loading ? (
@@ -275,7 +392,7 @@ const Brain = () => {
                 <Skeleton key={i} className="h-32 rounded-xl" />
               ))}
             </div>
-          ) : filteredConcepts.length === 0 ? (
+          ) : processedConcepts.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -285,6 +402,8 @@ const Brain = () => {
               <p className="text-muted-foreground">
                 {concepts.length === 0
                   ? 'Aucun concept en mémoire. Complète des cours pour commencer !'
+                  : searchQuery
+                  ? 'Aucun concept ne correspond à ta recherche.'
                   : 'Aucun concept dans cette catégorie.'}
               </p>
             </motion.div>
@@ -361,7 +480,7 @@ const Brain = () => {
           ) : (
             // Flat view
             <AnimatePresence mode="popLayout">
-              {filteredConcepts.map((concept) => (
+              {processedConcepts.map((concept) => (
                 <ConceptCard
                   key={concept.id}
                   id={concept.id}
