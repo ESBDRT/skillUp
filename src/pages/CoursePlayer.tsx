@@ -111,9 +111,13 @@ const CoursePlayer = () => {
               ? JSON.parse(card.options)
               : card.options;
 
-            // Handle both formats: { options: string[], correctIndex } or direct array of objects
-            const rawOptions = optionsData.options || optionsData;
-            const correctIdx = optionsData.correctIndex ?? 0;
+            // Extract options array - handle nested structure
+            let rawOptions = optionsData;
+            if (optionsData && typeof optionsData === 'object' && !Array.isArray(optionsData)) {
+              rawOptions = optionsData.options || [];
+            }
+            
+            const correctIdx = optionsData?.correctIndex ?? 0;
             
             let parsedOptions: Array<{ id: string; text: string; isCorrect: boolean }> = [];
             
@@ -127,20 +131,28 @@ const CoursePlayer = () => {
                     isCorrect: i === correctIdx,
                   };
                 }
-                // Handle object options - prioritize existing isCorrect property
+                // Handle object options
                 if (typeof opt === 'object' && opt !== null) {
-                  // If isCorrect is explicitly defined in the option, use it
-                  // Only fall back to correctIndex if isCorrect is undefined
                   const hasExplicitIsCorrect = 'isCorrect' in opt;
                   return {
                     id: opt.id || `opt-${i}`,
-                    text: opt.text || String(opt),
-                    isCorrect: hasExplicitIsCorrect ? opt.isCorrect === true : i === correctIdx,
+                    text: String(opt.text || opt.label || ''),
+                    isCorrect: hasExplicitIsCorrect 
+                      ? (opt.isCorrect === true || opt.isCorrect === 'true')
+                      : i === correctIdx,
                   };
                 }
                 return { id: `opt-${i}`, text: String(opt), isCorrect: i === correctIdx };
-              });
+              }).filter((opt: any) => opt.text && opt.text.trim() !== '');
             }
+
+            // Ensure at least one correct answer exists
+            const hasCorrect = parsedOptions.some(o => o.isCorrect);
+            if (!hasCorrect && parsedOptions.length > 0) {
+              parsedOptions[0].isCorrect = true;
+            }
+
+            console.log('Quiz transformed:', { cardId: card.id, optionsCount: parsedOptions.length, hasCorrect: parsedOptions.some(o => o.isCorrect) });
 
             return {
               ...baseCard,

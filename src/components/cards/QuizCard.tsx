@@ -101,6 +101,31 @@ const QuizCard = ({ card, onComplete, onNext, questionNumber, totalQuestions }: 
     }
   };
 
+  // Fallback UI when no options are available
+  if (normalizedOptions.length === 0) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
+        <AlertCircle className="w-12 h-12 text-amber-500 mb-4" />
+        <p className="text-lg font-medium text-foreground mb-2">
+          Quiz non disponible
+        </p>
+        <p className="text-sm text-muted-foreground text-center mb-4">
+          Les options de ce quiz n'ont pas pu être chargées.
+        </p>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onComplete(0);
+            if (onNext) onNext();
+          }}
+          className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-medium"
+        >
+          Passer ce quiz →
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 flex flex-col" onClick={(e) => e.stopPropagation()}>
       {/* Question header */}
