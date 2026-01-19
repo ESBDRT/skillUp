@@ -65,34 +65,34 @@ const SliderCard = ({ card, onComplete }: SliderCardProps) => {
   };
 
   return (
-    <div className="flex-1 flex flex-col">
+    <div className="flex-1 flex flex-col max-w-xl mx-auto w-full">
       <motion.div
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="mb-8"
+        className="mb-4 sm:mb-6"
       >
-        <div className="inline-block px-3 py-1 bg-primary/10 rounded-full mb-4">
-          <span className="text-sm font-medium text-primary">Estimation</span>
+        <div className="inline-block px-2.5 sm:px-3 py-1 bg-primary/10 rounded-full mb-3 sm:mb-4">
+          <span className="text-xs sm:text-sm font-medium text-primary">Estimation</span>
         </div>
-        <h2 className="text-2xl font-bold text-foreground mb-2">{card.title}</h2>
-        <p className="text-muted-foreground">{card.content}</p>
+        <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-1.5 sm:mb-2 leading-tight">{card.title}</h2>
+        <p className="text-sm sm:text-base text-muted-foreground">{card.content}</p>
       </motion.div>
 
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ delay: 0.2 }}
-        className="bg-card rounded-3xl p-6 shadow-elevated border border-border"
+        className="bg-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-elevated border border-border"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="text-center mb-8">
-          <span className="text-5xl font-bold text-foreground">
+        <div className="text-center mb-6 sm:mb-8">
+          <span className="text-4xl sm:text-5xl font-bold text-foreground">
             {value[0]}
           </span>
-          <span className="text-2xl text-muted-foreground ml-1">{config.unit}</span>
+          <span className="text-xl sm:text-2xl text-muted-foreground ml-1">{config.unit}</span>
         </div>
 
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <Slider
             value={value}
             onValueChange={handleValueChange}
@@ -111,9 +111,9 @@ const SliderCard = ({ card, onComplete }: SliderCardProps) => {
           key={getImpactText()}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`text-center p-4 rounded-2xl bg-muted ${getImpactColor()}`}
+          className={`text-center p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-muted ${getImpactColor()}`}
         >
-          <p className="font-medium">{getImpactText()}</p>
+          <p className="font-medium text-sm sm:text-base">{getImpactText()}</p>
         </motion.div>
       </motion.div>
 
@@ -122,7 +122,7 @@ const SliderCard = ({ card, onComplete }: SliderCardProps) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="mt-6 text-sm text-muted-foreground text-center"
+          className="mt-4 sm:mt-6 text-xs sm:text-sm text-muted-foreground text-center"
         >
           {config.description}
         </motion.p>

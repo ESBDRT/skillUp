@@ -32,24 +32,24 @@ const FlashCard = ({ card, onComplete, onNext }: FlashCardProps) => {
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center">
+    <div className="flex-1 flex flex-col items-center justify-center max-w-xl mx-auto w-full">
       <motion.div
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="mb-4 sm:mb-6 text-center"
+        className="mb-4 sm:mb-6 text-center px-2"
       >
         <div className="inline-block px-2.5 sm:px-3 py-1 bg-success/10 rounded-full mb-3 sm:mb-4">
           <span className="text-xs sm:text-sm font-medium text-success">Flashcard</span>
         </div>
-        <h2 className="text-lg sm:text-xl font-bold text-foreground leading-tight">{card.title}</h2>
+        <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground leading-tight">{card.title}</h2>
       </motion.div>
 
-      <div className="w-full perspective-1000">
+      <div className="w-full max-w-md perspective-1000 px-2 sm:px-0">
         <motion.div
           onClick={handleFlip}
           animate={{ rotateY: isFlipped ? 180 : 0 }}
           transition={{ duration: 0.6, type: 'spring', stiffness: 100 }}
-          className="relative w-full aspect-[4/3] cursor-pointer preserve-3d"
+          className="relative w-full aspect-[4/3] sm:aspect-[3/2] cursor-pointer preserve-3d"
           style={{ transformStyle: 'preserve-3d' }}
         >
           {/* Front */}
@@ -57,7 +57,7 @@ const FlashCard = ({ card, onComplete, onNext }: FlashCardProps) => {
             className="absolute inset-0 bg-card rounded-2xl sm:rounded-3xl shadow-elevated border border-border flex flex-col items-center justify-center p-4 sm:p-6 backface-hidden"
             style={{ backfaceVisibility: 'hidden' }}
           >
-            <p className="text-base sm:text-xl font-medium text-foreground text-center mb-4 sm:mb-6">
+            <p className="text-sm sm:text-base md:text-xl font-medium text-foreground text-center mb-4 sm:mb-6">
               {card.content}
             </p>
             <div className="flex items-center gap-2 text-muted-foreground">
@@ -74,7 +74,7 @@ const FlashCard = ({ card, onComplete, onNext }: FlashCardProps) => {
               transform: 'rotateY(180deg)'
             }}
           >
-            <p className="text-base sm:text-xl font-medium text-primary-foreground text-center">
+            <p className="text-sm sm:text-base md:text-xl font-medium text-primary-foreground text-center">
               {card.flashcardBack}
             </p>
           </div>
@@ -86,7 +86,7 @@ const FlashCard = ({ card, onComplete, onNext }: FlashCardProps) => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           onClick={handleContinue}
-          className="mt-4 sm:mt-6 w-full sm:w-auto px-6 py-3.5 sm:py-3 bg-primary text-primary-foreground rounded-xl sm:rounded-full font-medium hover:bg-primary/90 transition-colors touch-target"
+          className="mt-4 sm:mt-6 w-full sm:w-auto px-6 py-3.5 sm:py-3 bg-primary text-primary-foreground rounded-xl sm:rounded-full font-medium hover:bg-primary/90 transition-colors touch-target max-w-xs mx-auto"
         >
           Continuer →
         </motion.button>

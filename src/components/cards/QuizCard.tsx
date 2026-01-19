@@ -127,19 +127,19 @@ const QuizCard = ({ card, onComplete, onNext, questionNumber, totalQuestions }: 
   }
 
   return (
-    <div className="flex-1 flex flex-col" onClick={(e) => e.stopPropagation()}>
+    <div className="flex-1 flex flex-col max-w-xl mx-auto w-full" onClick={(e) => e.stopPropagation()}>
       {/* Question header */}
       <motion.div
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="mb-6"
+        className="mb-4 sm:mb-6"
       >
-        <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-2">{card.title}</h2>
-        <p className="text-base sm:text-lg text-muted-foreground">{card.content}</p>
+        <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground mb-1.5 sm:mb-2 leading-tight">{card.title}</h2>
+        <p className="text-sm sm:text-base md:text-lg text-muted-foreground">{card.content}</p>
       </motion.div>
 
       {/* Options */}
-      <div className="space-y-3 flex-1">
+      <div className="space-y-2 sm:space-y-3 flex-1">
         {normalizedOptions.map((option, index) => {
           const isSelected = selectedId === option.id;
           const isThisCorrect = option.isCorrect;
@@ -157,7 +157,7 @@ const QuizCard = ({ card, onComplete, onNext, questionNumber, totalQuestions }: 
                 handleSelect(option.id);
               }}
               disabled={hasAnswered}
-              className={`w-full p-4 rounded-2xl text-left transition-all border-2 ${
+              className={`w-full p-3 sm:p-4 rounded-xl sm:rounded-2xl text-left transition-all border-2 ${
                 showAsCorrect
                   ? 'bg-emerald-500/15 border-emerald-500 shadow-lg shadow-emerald-500/20'
                   : showAsWrong
@@ -167,9 +167,9 @@ const QuizCard = ({ card, onComplete, onNext, questionNumber, totalQuestions }: 
                   : 'bg-card border-border hover:border-primary/50 hover:bg-muted/50'
               }`}
             >
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center justify-between gap-2 sm:gap-3">
                 {/* Option letter */}
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
+                <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold flex-shrink-0 ${
                   showAsCorrect
                     ? 'bg-emerald-500 text-white'
                     : showAsWrong
@@ -180,7 +180,7 @@ const QuizCard = ({ card, onComplete, onNext, questionNumber, totalQuestions }: 
                 </div>
 
                 {/* Option text */}
-                <span className={`flex-1 font-medium ${
+                <span className={`flex-1 text-sm sm:text-base font-medium ${
                   showAsCorrect
                     ? 'text-emerald-600 dark:text-emerald-400'
                     : showAsWrong
@@ -196,14 +196,14 @@ const QuizCard = ({ card, onComplete, onNext, questionNumber, totalQuestions }: 
                     initial={{ scale: 0, rotate: -180 }}
                     animate={{ scale: 1, rotate: 0 }}
                     transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                    className={`p-1.5 rounded-full ${
+                    className={`p-1 sm:p-1.5 rounded-full ${
                       showAsCorrect ? 'bg-emerald-500' : 'bg-red-500'
                     }`}
                   >
                     {showAsCorrect ? (
-                      <Check className="w-4 h-4 text-white" />
+                      <Check className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
                     ) : (
-                      <X className="w-4 h-4 text-white" />
+                      <X className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
                     )}
                   </motion.div>
                 )}
@@ -221,39 +221,39 @@ const QuizCard = ({ card, onComplete, onNext, questionNumber, totalQuestions }: 
             animate={{ opacity: 1, y: 0, height: 'auto' }}
             exit={{ opacity: 0, y: 20, height: 0 }}
             transition={{ delay: 0.3 }}
-            className="mt-6 space-y-4"
+            className="mt-4 sm:mt-6 space-y-3 sm:space-y-4"
           >
             {/* Result message */}
-            <div className={`p-4 rounded-2xl flex items-center gap-3 ${
+            <div className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl flex items-center gap-2 sm:gap-3 ${
               isCorrect 
                 ? 'bg-emerald-500/15 border border-emerald-500/30' 
                 : 'bg-amber-500/15 border border-amber-500/30'
             }`}>
               {isCorrect ? (
                 <>
-                  <div className="p-2 bg-emerald-500 rounded-full">
-                    <Sparkles className="w-5 h-5 text-white" />
+                  <div className="p-1.5 sm:p-2 bg-emerald-500 rounded-full flex-shrink-0">
+                    <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                   </div>
-                  <div>
-                    <p className="font-bold text-emerald-600 dark:text-emerald-400">
+                  <div className="min-w-0">
+                    <p className="font-bold text-sm sm:text-base text-emerald-600 dark:text-emerald-400">
                       Excellent ! +{card.xpReward} XP
                     </p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs sm:text-sm text-muted-foreground">
                       Tu maîtrises ce concept !
                     </p>
                   </div>
                 </>
               ) : (
                 <>
-                  <div className="p-2 bg-amber-500 rounded-full">
-                    <AlertCircle className="w-5 h-5 text-white" />
+                  <div className="p-1.5 sm:p-2 bg-amber-500 rounded-full flex-shrink-0">
+                    <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                   </div>
-                  <div>
-                    <p className="font-bold text-amber-600 dark:text-amber-400">
+                  <div className="min-w-0">
+                    <p className="font-bold text-sm sm:text-base text-amber-600 dark:text-amber-400">
                       Pas tout à fait...
                     </p>
-                    <p className="text-sm text-muted-foreground">
-                      La bonne réponse était : <span className="font-medium text-foreground">{correctOption?.text}</span>
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">
+                      La bonne réponse : <span className="font-medium text-foreground">{correctOption?.text}</span>
                     </p>
                   </div>
                 </>
@@ -266,7 +266,7 @@ const QuizCard = ({ card, onComplete, onNext, questionNumber, totalQuestions }: 
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5 }}
               onClick={handleContinue}
-              className="w-full py-4 bg-primary text-primary-foreground rounded-2xl font-bold text-lg hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
+              className="w-full py-3 sm:py-4 bg-primary text-primary-foreground rounded-xl sm:rounded-2xl font-bold text-base sm:text-lg hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
             >
               Continuer →
             </motion.button>

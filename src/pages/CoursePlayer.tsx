@@ -481,7 +481,7 @@ const CoursePlayer = () => {
     <div className="min-h-screen bg-background flex flex-col">
       {/* Enhanced Header */}
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border/50 safe-top">
-        <div className="px-4 py-3 space-y-3">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-3 space-y-3">
           {/* Top row: Exit, XP, Save */}
           <div className="flex items-center justify-between">
             <button
@@ -545,25 +545,26 @@ const CoursePlayer = () => {
 
       {/* Card Area */}
       <main
-        className="flex-1 flex flex-col px-4 py-4 relative no-tap-highlight overflow-hidden"
+        className="flex-1 flex flex-col px-4 sm:px-6 py-4 sm:py-6 relative no-tap-highlight overflow-hidden"
         onClick={handleTap}
       >
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={currentCardIndex}
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -50 }}
-            transition={{ duration: 0.3, ease: 'easeOut' }}
-            className="flex-1 flex flex-col min-h-0"
-          >
-            {renderCard()}
-          </motion.div>
-        </AnimatePresence>
+        <div className="max-w-2xl mx-auto w-full flex-1 flex flex-col min-h-0">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentCardIndex}
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -50 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+              className="flex-1 flex flex-col min-h-0"
+            >
+              {renderCard()}
+            </motion.div>
+          </AnimatePresence>
+        </div>
 
-        {/* XP popup removed as requested */}
-
-        <div className="absolute inset-0 pointer-events-none flex">
+        {/* Navigation hints - hidden on larger screens */}
+        <div className="absolute inset-0 pointer-events-none flex sm:hidden">
           <div className="w-1/2 flex items-center justify-start pl-2">
             <motion.div
               initial={{ opacity: 0 }}
@@ -588,41 +589,41 @@ const CoursePlayer = () => {
       <AudioPlayer text={getCardTextContent()} />
 
       {/* Enhanced Footer with Navigation */}
-      <footer className="px-4 py-4 border-t border-border bg-card safe-bottom">
-        <div className="flex items-center justify-between gap-3">
-          {/* Previous button - only for info cards */}
+      <footer className="px-4 sm:px-6 py-4 border-t border-border bg-card safe-bottom">
+        <div className="max-w-2xl mx-auto flex items-center justify-between gap-3">
+          {/* Previous button */}
           <button
             onClick={handlePrev}
             disabled={currentCardIndex === 0}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-colors ${
+            className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl font-medium transition-colors text-sm sm:text-base ${
               currentCardIndex === 0
                 ? 'opacity-30 cursor-not-allowed bg-muted text-muted-foreground'
                 : 'bg-secondary hover:bg-secondary/80 text-foreground'
             }`}
           >
-            ← Précédent
+            ← <span className="hidden sm:inline">Précédent</span>
           </button>
 
-          {/* AI Help - smaller */}
+          {/* AI Help */}
           <button className="p-2.5 bg-primary/10 rounded-full hover:bg-primary/20 transition-colors">
             <MessageCircle className="w-4 h-4 text-primary" />
           </button>
 
-          {/* Next button - only for info cards (interactive cards have their own) */}
+          {/* Next button - only for info cards */}
           {!isInteractiveCard && (
             <button
               onClick={() => {
                 handleXPGain(currentCard.xpReward);
                 handleNext();
               }}
-              className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-primary/90 transition-colors"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2.5 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-primary/90 transition-colors text-sm sm:text-base"
             >
-              Suivant →
+              <span className="hidden sm:inline">Suivant</span> →
             </button>
           )}
 
-          {/* Placeholder to maintain layout when no next button */}
-          {isInteractiveCard && <div className="w-24" />}
+          {/* Placeholder for layout balance */}
+          {isInteractiveCard && <div className="w-16 sm:w-24" />}
         </div>
       </footer>
     </div>
