@@ -1,7 +1,7 @@
 import React, { useRef, useCallback, useMemo, useState, useEffect } from 'react';
-import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide, SimulationNodeDatum, SimulationLinkDatum } from 'd3-force';
+import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide } from 'd3-force';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Brain, Calendar, RotateCcw, ExternalLink, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { X, Brain, Calendar, RotateCcw, ExternalLink, ZoomIn, ZoomOut, Maximize2, Minimize2, Move } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
@@ -54,9 +54,9 @@ interface KnowledgeGraphProps {
 
 // Color helper based on memory strength
 const getStrengthColor = (strength: number): string => {
-  if (strength < 40) return 'hsl(0, 70%, 55%)'; // Red - danger
-  if (strength < 70) return 'hsl(35, 85%, 55%)'; // Orange - warning
-  return 'hsl(142, 60%, 45%)'; // Green - solid
+  if (strength < 40) return 'hsl(0, 70%, 55%)';
+  if (strength < 70) return 'hsl(35, 85%, 55%)';
+  return 'hsl(142, 60%, 45%)';
 };
 
 const getStrengthLabel = (strength: number): string => {
@@ -78,7 +78,6 @@ const extractKeywords = (text: string): Set<string> => {
   );
 };
 
-// Check if two concepts have common keywords
 const hasCommonKeywords = (concept1: MemoryConcept, concept2: MemoryConcept, minCommon: number = 2): boolean => {
   const text1 = `${concept1.concept_title} ${concept1.concept_content || ''}`;
   const text2 = `${concept2.concept_title} ${concept2.concept_content || ''}`;
@@ -103,11 +102,13 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
-  const [dimensions, setDimensions] = useState({ width: 800, height: 500 });
+  const [dimensions, setDimensions] = useState({ width: 800, height: 300 });
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number; distance?: number } | null>(null);
   const simulationRef = useRef<ReturnType<typeof forceSimulation<GraphNode>> | null>(null);
   const nodesRef = useRef<GraphNode[]>([]);
   const linksRef = useRef<GraphLink[]>([]);
@@ -151,7 +152,6 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
 
     const links: GraphLink[] = [];
     
-    // Group by course
     const courseGroups: Record<string, MemoryConcept[]> = {};
     filteredConcepts.forEach(concept => {
       if (!courseGroups[concept.course_id]) {
@@ -160,22 +160,16 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       courseGroups[concept.course_id].push(concept);
     });
 
-    // Create course-based links
     Object.values(courseGroups).forEach(courseConcepts => {
       for (let i = 0; i < courseConcepts.length - 1; i++) {
         const sourceNode = nodes.find(n => n.id === courseConcepts[i].id);
         const targetNode = nodes.find(n => n.id === courseConcepts[i + 1].id);
         if (sourceNode && targetNode) {
-          links.push({
-            source: sourceNode,
-            target: targetNode,
-            type: 'course',
-          });
+          links.push({ source: sourceNode, target: targetNode, type: 'course' });
         }
       }
     });
 
-    // Create semantic links
     for (let i = 0; i < filteredConcepts.length; i++) {
       for (let j = i + 1; j < filteredConcepts.length; j++) {
         if (filteredConcepts[i].course_id === filteredConcepts[j].course_id) continue;
@@ -184,11 +178,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
           const sourceNode = nodes.find(n => n.id === filteredConcepts[i].id);
           const targetNode = nodes.find(n => n.id === filteredConcepts[j].id);
           if (sourceNode && targetNode) {
-            links.push({
-              source: sourceNode,
-              target: targetNode,
-              type: 'semantic',
-            });
+            links.push({ source: sourceNode, target: targetNode, type: 'semantic' });
           }
         }
       }
@@ -204,7 +194,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
         const rect = containerRef.current.getBoundingClientRect();
         setDimensions({
           width: rect.width || 800,
-          height: Math.max(400, window.innerHeight - 350),
+          height: isFullscreen ? window.innerHeight - 100 : Math.min(350, window.innerHeight - 400),
         });
       }
     };
@@ -212,7 +202,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     updateDimensions();
     window.addEventListener('resize', updateDimensions);
     return () => window.removeEventListener('resize', updateDimensions);
-  }, []);
+  }, [isFullscreen]);
 
   // Initialize simulation
   useEffect(() => {
@@ -257,7 +247,6 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     ctx.clearRect(0, 0, dimensions.width, dimensions.height);
     ctx.save();
     
-    // Apply zoom and pan
     ctx.translate(pan.x, pan.y);
     ctx.scale(zoom, zoom);
 
@@ -290,20 +279,17 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     nodes.forEach(node => {
       if (node.x === undefined || node.y === undefined) return;
 
-      // Node circle
       ctx.beginPath();
       ctx.arc(node.x, node.y, node.radius, 0, 2 * Math.PI);
       ctx.fillStyle = node.color;
       ctx.fill();
       
-      // Glow effect for selected
       if (selectedNode?.id === node.id) {
         ctx.strokeStyle = 'white';
         ctx.lineWidth = 3;
         ctx.stroke();
       }
 
-      // Label
       const fontSize = Math.max(9, 11 / zoom);
       ctx.font = `${fontSize}px Inter, sans-serif`;
       ctx.textAlign = 'center';
@@ -315,12 +301,10 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       
       const textY = node.y + node.radius + fontSize + 2;
       
-      // Text background
       const textWidth = ctx.measureText(label).width;
       ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
       ctx.fillRect(node.x - textWidth / 2 - 3, textY - fontSize / 2 - 2, textWidth + 6, fontSize + 4);
       
-      // Text
       ctx.fillStyle = 'white';
       ctx.fillText(label, node.x, textY);
     });
@@ -328,20 +312,20 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     ctx.restore();
   }, [dimensions, zoom, pan, selectedNode]);
 
-  // Redraw on state changes
   useEffect(() => {
     draw();
   }, [draw]);
 
-  // Mouse handlers
-  const getMousePos = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  // Get position from event (mouse or touch)
+  const getEventPos = (clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     
     const rect = canvas.getBoundingClientRect();
+    
     return {
-      x: (e.clientX - rect.left - pan.x) / zoom,
-      y: (e.clientY - rect.top - pan.y) / zoom,
+      x: (clientX - rect.left - pan.x) / zoom,
+      y: (clientY - rect.top - pan.y) / zoom,
     };
   };
 
@@ -357,15 +341,16 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     return null;
   };
 
+  // Mouse handlers
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const pos = getMousePos(e);
+    const pos = getEventPos(e.clientX, e.clientY);
     const node = findNodeAtPosition(pos.x, pos.y);
     setSelectedNode(node);
     draw();
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const pos = getMousePos(e);
+    const pos = getEventPos(e.clientX, e.clientY);
     const node = findNodeAtPosition(pos.x, pos.y);
     
     if (!node) {
@@ -393,11 +378,61 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     setZoom(z => Math.min(4, Math.max(0.3, z * delta)));
   };
 
+  // Touch handlers for mobile
+  const getTouchDistance = (touches: React.TouchList) => {
+    if (touches.length < 2) return 0;
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (e.touches.length === 1) {
+      const touch = e.touches[0] as React.Touch;
+      const pos = getEventPos(touch.clientX, touch.clientY);
+      const node = findNodeAtPosition(pos.x, pos.y);
+      
+      if (node) {
+        setSelectedNode(node);
+      } else {
+        setTouchStart({ x: touch.clientX - pan.x, y: touch.clientY - pan.y });
+      }
+    } else if (e.touches.length === 2) {
+      const distance = getTouchDistance(e.touches);
+      setTouchStart({ x: 0, y: 0, distance });
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    
+    if (e.touches.length === 1 && touchStart && !touchStart.distance) {
+      const touch = e.touches[0];
+      setPan({
+        x: touch.clientX - touchStart.x,
+        y: touch.clientY - touchStart.y,
+      });
+    } else if (e.touches.length === 2 && touchStart?.distance) {
+      const newDistance = getTouchDistance(e.touches);
+      const scale = newDistance / touchStart.distance;
+      setZoom(z => Math.min(4, Math.max(0.3, z * scale)));
+      setTouchStart({ x: 0, y: 0, distance: newDistance });
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setTouchStart(null);
+  };
+
   const handleZoomIn = () => setZoom(z => Math.min(4, z * 1.2));
   const handleZoomOut = () => setZoom(z => Math.max(0.3, z / 1.2));
   const handleReset = () => {
     setZoom(1);
     setPan({ x: 0, y: 0 });
+  };
+
+  const toggleFullscreen = () => {
+    setIsFullscreen(!isFullscreen);
   };
 
   const handleReviewConcept = () => {
@@ -421,48 +456,103 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
 
   if (filteredConcepts.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-        <Brain className="w-12 h-12 mb-4 opacity-50" />
+      <div 
+        className="flex flex-col items-center justify-center h-64 text-muted-foreground"
+        role="status"
+        aria-label="Aucun concept à afficher"
+      >
+        <Brain className="w-12 h-12 mb-4 opacity-50" aria-hidden="true" />
         <p>Aucun concept à afficher</p>
-        <p className="text-sm">Ajoutez des concepts pour voir votre graphe de connaissances</p>
+        <p className="text-sm">Complète des cours pour voir ton graphe</p>
       </div>
     );
   }
 
   return (
-    <div ref={containerRef} className="relative w-full rounded-xl overflow-hidden bg-card/30 border border-border/50">
-      {/* Legend */}
-      <div className="absolute top-4 left-4 z-10 flex flex-wrap gap-2 bg-background/80 backdrop-blur-sm rounded-lg p-2">
+    <div 
+      ref={containerRef} 
+      className={`relative w-full rounded-xl overflow-hidden bg-card/30 border border-border/50 ${
+        isFullscreen ? 'fixed inset-4 z-50 bg-background' : ''
+      }`}
+      role="img"
+      aria-label={`Graphe de connaissances avec ${nodesRef.current.length} concepts et ${linksRef.current.length} connexions`}
+    >
+      {/* Help text for mobile */}
+      <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+        <p className="text-xs text-muted-foreground bg-background/60 backdrop-blur-sm px-2 py-1 rounded-full opacity-70">
+          <Move className="w-3 h-3 inline mr-1" aria-hidden="true" />
+          Glisser pour explorer • Pincer pour zoomer
+        </p>
+      </div>
+
+      {/* Legend - compact for mobile */}
+      <div className="absolute top-10 left-2 z-10 flex flex-col gap-1 bg-background/80 backdrop-blur-sm rounded-lg p-2">
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'hsl(142, 60%, 45%)' }} />
-          <span className="text-xs text-muted-foreground">Solide</span>
+          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: 'hsl(142, 60%, 45%)' }} aria-hidden="true" />
+          <span className="text-[10px] text-muted-foreground">Solide</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'hsl(35, 85%, 55%)' }} />
-          <span className="text-xs text-muted-foreground">À revoir</span>
+          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: 'hsl(35, 85%, 55%)' }} aria-hidden="true" />
+          <span className="text-[10px] text-muted-foreground">À revoir</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'hsl(0, 70%, 55%)' }} />
-          <span className="text-xs text-muted-foreground">En danger</span>
+          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: 'hsl(0, 70%, 55%)' }} aria-hidden="true" />
+          <span className="text-[10px] text-muted-foreground">Danger</span>
         </div>
       </div>
 
-      {/* Controls */}
-      <div className="absolute top-4 right-4 z-10 flex items-center gap-1 bg-background/80 backdrop-blur-sm rounded-lg p-1">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleZoomIn}>
-          <ZoomIn className="h-4 w-4" />
+      {/* Controls - positioned at bottom for thumb access */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-background/90 backdrop-blur-sm rounded-full px-2 py-1 shadow-lg">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="h-10 w-10"
+          onClick={handleZoomOut}
+          aria-label="Dézoomer"
+        >
+          <ZoomOut className="h-5 w-5" aria-hidden="true" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleZoomOut}>
-          <ZoomOut className="h-4 w-4" />
+        <span className="text-sm font-medium text-foreground min-w-[3rem] text-center" aria-live="polite">
+          {Math.round(zoom * 100)}%
+        </span>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="h-10 w-10"
+          onClick={handleZoomIn}
+          aria-label="Zoomer"
+        >
+          <ZoomIn className="h-5 w-5" aria-hidden="true" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleReset}>
-          <Maximize2 className="h-4 w-4" />
+        <div className="w-px h-6 bg-border" aria-hidden="true" />
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="h-10 w-10"
+          onClick={handleReset}
+          aria-label="Réinitialiser la vue"
+        >
+          <RotateCcw className="h-4 w-4" aria-hidden="true" />
+        </Button>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="h-10 w-10"
+          onClick={toggleFullscreen}
+          aria-label={isFullscreen ? "Quitter le plein écran" : "Plein écran"}
+          aria-pressed={isFullscreen}
+        >
+          {isFullscreen ? (
+            <Minimize2 className="h-4 w-4" aria-hidden="true" />
+          ) : (
+            <Maximize2 className="h-4 w-4" aria-hidden="true" />
+          )}
         </Button>
       </div>
 
-      {/* Stats */}
-      <div className="absolute bottom-4 left-4 z-10 bg-background/80 backdrop-blur-sm rounded-lg p-2">
-        <p className="text-xs text-muted-foreground">
+      {/* Stats badge */}
+      <div className="absolute top-10 right-2 z-10 bg-background/80 backdrop-blur-sm rounded-lg px-2 py-1">
+        <p className="text-[10px] text-muted-foreground">
           {nodesRef.current.length} concepts • {linksRef.current.length} liens
         </p>
       </div>
@@ -478,8 +568,11 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         onWheel={handleWheel}
-        className="cursor-grab active:cursor-grabbing"
-        style={{ touchAction: 'none' }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        className="cursor-grab active:cursor-grabbing touch-none"
+        aria-label="Canvas du graphe de connaissances interactif"
       />
 
       {/* Selected Node Detail Modal */}
@@ -489,21 +582,24 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className="absolute bottom-4 left-4 right-4 z-20"
+            className="absolute bottom-16 left-2 right-2 z-20"
+            role="dialog"
+            aria-label={`Détails du concept: ${selectedNode.name}`}
           >
             <div className="bg-background/95 backdrop-blur-md border border-border rounded-xl p-4 shadow-xl max-w-md mx-auto">
               <div className="flex items-start justify-between mb-3">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-foreground line-clamp-1">{selectedNode.name}</h3>
-                  <p className="text-sm text-muted-foreground">{selectedNode.courseTitle}</p>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-foreground line-clamp-2">{selectedNode.name}</h3>
+                  <p className="text-sm text-muted-foreground truncate">{selectedNode.courseTitle}</p>
                 </div>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 shrink-0"
                   onClick={() => setSelectedNode(null)}
+                  aria-label="Fermer les détails"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-4 w-4" aria-hidden="true" />
                 </Button>
               </div>
 
@@ -516,36 +612,34 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
               <div className="flex flex-wrap gap-2 mb-4">
                 <Badge 
                   variant="outline"
-                  style={{ 
-                    borderColor: selectedNode.color,
-                    color: selectedNode.color 
-                  }}
+                  style={{ borderColor: selectedNode.color, color: selectedNode.color }}
                 >
-                  <Brain className="w-3 h-3 mr-1" />
+                  <Brain className="w-3 h-3 mr-1" aria-hidden="true" />
                   {selectedNode.memoryStrength}% - {getStrengthLabel(selectedNode.memoryStrength)}
                 </Badge>
                 <Badge variant="secondary">
-                  <Calendar className="w-3 h-3 mr-1" />
+                  <Calendar className="w-3 h-3 mr-1" aria-hidden="true" />
                   {formatDate(selectedNode.nextReview)}
                 </Badge>
                 <Badge variant="secondary">
-                  <RotateCcw className="w-3 h-3 mr-1" />
+                  <RotateCcw className="w-3 h-3 mr-1" aria-hidden="true" />
                   {selectedNode.repetitions} révision(s)
                 </Badge>
               </div>
 
               <div className="flex gap-2">
                 <Button 
-                  className="flex-1" 
+                  className="flex-1 min-h-[44px]" 
                   size="sm"
                   onClick={handleReviewConcept}
                 >
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  Réviser maintenant
+                  <ExternalLink className="w-4 h-4 mr-2" aria-hidden="true" />
+                  Réviser
                 </Button>
                 <Button 
                   variant="outline" 
                   size="sm"
+                  className="min-h-[44px]"
                   onClick={() => setSelectedNode(null)}
                 >
                   Fermer
