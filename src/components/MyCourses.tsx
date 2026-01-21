@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { POC_USER_ID } from '@/lib/constants';
+import { useAuth } from '@/context/AuthContext';
 
 interface Course {
   id: string;
@@ -35,20 +35,25 @@ interface CourseCard {
 
 export function MyCourses() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchMyCourses();
-  }, []);
+    if (user) {
+      fetchMyCourses();
+    }
+  }, [user]);
 
   const fetchMyCourses = async () => {
+    if (!user) return;
+    
     try {
       const { data, error } = await supabase
         .from('courses')
         .select('*')
-        .eq('user_id', POC_USER_ID)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;

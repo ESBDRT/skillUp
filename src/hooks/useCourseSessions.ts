@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { POC_USER_ID } from '@/lib/constants';
+import { useAuth } from '@/context/AuthContext';
 
 export interface CourseSession {
   id: string;
@@ -24,11 +24,19 @@ export interface CourseSession {
 }
 
 export function useCourseSessions() {
+  const { user } = useAuth();
   const [sessions, setSessions] = useState<CourseSession[]>([]);
   const [todaySessions, setTodaySessions] = useState<CourseSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchSessions = useCallback(async () => {
+    if (!user) {
+      setSessions([]);
+      setTodaySessions([]);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('course_sessions')
@@ -36,7 +44,7 @@ export function useCourseSessions() {
           *,
           course:courses(id, title, icon, category, duration_days, daily_cards_count)
         `)
-        .eq('user_id', POC_USER_ID)
+        .eq('user_id', user.id)
         .order('scheduled_date', { ascending: true });
 
       if (error) throw error;
@@ -57,7 +65,7 @@ export function useCourseSessions() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     fetchSessions();
@@ -69,6 +77,8 @@ export function useCourseSessions() {
     durationDays: number,
     startDate: Date = new Date()
   ) => {
+    if (!user) return false;
+
     const cardsPerDay = Math.ceil(totalCards / durationDays);
     const sessionsToCreate = [];
 
@@ -80,7 +90,7 @@ export function useCourseSessions() {
       const endIndex = Math.min((day + 1) * cardsPerDay - 1, totalCards - 1);
 
       sessionsToCreate.push({
-        user_id: POC_USER_ID,
+        user_id: user.id,
         course_id: courseId,
         scheduled_date: sessionDate.toISOString().split('T')[0],
         session_number: day + 1,
@@ -104,7 +114,7 @@ export function useCourseSessions() {
       console.error('Error creating sessions:', error);
       return false;
     }
-  }, [fetchSessions]);
+  }, [fetchSessions, user]);
 
   const completeSession = useCallback(async (sessionId: string, earnedXP: number) => {
     try {
