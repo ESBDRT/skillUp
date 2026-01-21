@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
-import { POC_USER_ID } from '@/lib/constants';
+import { useAuth } from '@/context/AuthContext';
 
 // Shared types
 export interface Course {
@@ -60,25 +60,33 @@ const levelLabels: Record<string, string> = {
 
 export function CourseList({ mode }: CourseListProps) {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [courses, setCourses] = useState<Course[]>([]);
     const [progressItems, setProgressItems] = useState<CourseProgress[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [deletingId, setDeletingId] = useState<string | null>(null);
 
     useEffect(() => {
+        if (!user) {
+            setIsLoading(false);
+            return;
+        }
+        
         if (mode === 'created') {
             fetchCreatedCourses();
         } else {
             fetchInProgressCourses();
         }
-    }, [mode]);
+    }, [mode, user]);
 
     const fetchCreatedCourses = async () => {
+        if (!user) return;
+        
         try {
             const { data, error } = await supabase
                 .from('courses')
                 .select('*')
-                .eq('user_id', POC_USER_ID)
+                .eq('user_id', user.id)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
@@ -91,11 +99,13 @@ export function CourseList({ mode }: CourseListProps) {
     };
 
     const fetchInProgressCourses = async () => {
+        if (!user) return;
+        
         try {
             const { data, error } = await supabase
                 .from('course_progress')
                 .select('*')
-                .eq('user_id', POC_USER_ID)
+                .eq('user_id', user.id)
                 .eq('is_completed', false)
                 .order('updated_at', { ascending: false });
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { POC_USER_ID } from '@/lib/constants';
+import { useAuth } from '@/context/AuthContext';
 
 export interface MemoryConcept {
   id: string;
@@ -74,14 +74,16 @@ export const calculateMemoryStrength = (lastReview: string | null, intervalDays:
 };
 
 export const useMemoryConcepts = () => {
+  const { user } = useAuth();
   const [concepts, setConcepts] = useState<MemoryConcept[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const userId = POC_USER_ID;
+  const userId = user?.id;
 
   const fetchConcepts = useCallback(async () => {
     if (!userId) {
+      setConcepts([]);
       setLoading(false);
       return;
     }
@@ -176,6 +178,8 @@ export const useMemoryConcepts = () => {
   };
 
   const updateConceptAfterReview = async (conceptId: string, quality: number) => {
+    if (!userId) return;
+    
     const concept = concepts.find(c => c.id === conceptId);
     if (!concept) return;
 
@@ -264,6 +268,8 @@ export const useMemoryConcepts = () => {
 
   // Get weekly review stats
   const getWeeklyStats = useCallback(async () => {
+    if (!userId) return { totalReviews: 0, correctReviews: 0 };
+
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 

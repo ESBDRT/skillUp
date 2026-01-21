@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { POC_USER_ID } from '@/lib/constants';
+import { useAuth } from '@/context/AuthContext';
 
 export interface UserProfile {
   id: string;
@@ -13,15 +13,22 @@ export interface UserProfile {
 }
 
 export function useUserProgress() {
+  const { user } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchProfile = useCallback(async () => {
+    if (!user) {
+      setProfile(null);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('user_profiles')
         .select('*')
-        .eq('user_id', POC_USER_ID)
+        .eq('user_id', user.id)
         .maybeSingle();
 
       if (error) throw error;
@@ -31,7 +38,7 @@ export function useUserProgress() {
         const { data: newProfile, error: createError } = await supabase
           .from('user_profiles')
           .insert({
-            user_id: POC_USER_ID,
+            user_id: user.id,
             xp: 0,
             level: 1,
             streak_count: 0,
@@ -50,14 +57,14 @@ export function useUserProgress() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
 
   const addXP = useCallback(async (amount: number) => {
-    if (!profile) return;
+    if (!profile || !user) return;
 
     const newXP = profile.xp + amount;
     const newLevel = Math.floor(newXP / 500) + 1;
@@ -69,7 +76,7 @@ export function useUserProgress() {
           xp: newXP, 
           level: newLevel 
         })
-        .eq('user_id', POC_USER_ID);
+        .eq('user_id', user.id);
 
       if (error) throw error;
 
@@ -77,10 +84,10 @@ export function useUserProgress() {
     } catch (error) {
       console.error('Error adding XP:', error);
     }
-  }, [profile]);
+  }, [profile, user]);
 
   const checkAndUpdateStreak = useCallback(async () => {
-    if (!profile) return;
+    if (!profile || !user) return;
 
     const today = new Date().toISOString().split('T')[0];
     const lastActivity = profile.last_activity_date;
@@ -114,7 +121,7 @@ export function useUserProgress() {
           streak_count: newStreak,
           last_activity_date: today
         })
-        .eq('user_id', POC_USER_ID);
+        .eq('user_id', user.id);
 
       if (error) throw error;
 
@@ -126,16 +133,16 @@ export function useUserProgress() {
     } catch (error) {
       console.error('Error updating streak:', error);
     }
-  }, [profile]);
+  }, [profile, user]);
 
   const updateDailyGoal = useCallback(async (minutes: number) => {
-    if (!profile) return;
+    if (!profile || !user) return;
 
     try {
       const { error } = await supabase
         .from('user_profiles')
         .update({ daily_goal_minutes: minutes })
-        .eq('user_id', POC_USER_ID);
+        .eq('user_id', user.id);
 
       if (error) throw error;
 
@@ -143,7 +150,7 @@ export function useUserProgress() {
     } catch (error) {
       console.error('Error updating daily goal:', error);
     }
-  }, [profile]);
+  }, [profile, user]);
 
   return {
     profile,

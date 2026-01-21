@@ -6,9 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// POC User ID - Single user for all tests
-const POC_USER_ID = "00000000-0000-0000-0000-000000000001";
-
 interface CourseCard {
   type: string;
   title: string;
@@ -46,17 +43,54 @@ serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    // Validate JWT token from Authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized - Missing or invalid authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Create client with user's auth token to validate
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
     
+    if (claimsError || !claimsData?.claims) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized - Invalid token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const userId = claimsData.claims.sub;
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized - No user ID in token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Use service role client for database operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { course } = await req.json() as { course: GeneratedCourse };
 
     if (!course || !course.title) {
-      throw new Error('Course data is required');
+      return new Response(
+        JSON.stringify({ error: 'Course data is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    console.log(`Saving course: ${course.title}`);
+    console.log(`Saving course: ${course.title} for user: ${userId}`);
     console.log(`Cards: ${course.cards.length}`);
 
     // Calculate optimal duration based on card count
@@ -64,17 +98,16 @@ serve(async (req) => {
     const estimatedMinutes = course.estimated_minutes || 10;
     
     // Minimum 4 cards per session for good engagement
-    // Use provided values or calculate sensible defaults
     const cardsPerDay = course.daily_cards_count || Math.max(4, Math.ceil(estimatedMinutes / 2));
     const durationDays = course.duration_days || Math.max(1, Math.ceil(totalCards / cardsPerDay));
     
     console.log(`Total cards: ${totalCards}, cards/day: ${cardsPerDay}, days: ${durationDays}`);
 
-    // 1. Insert the course
+    // 1. Insert the course with authenticated user ID
     const { data: courseData, error: courseError } = await supabase
       .from('courses')
       .insert({
-        user_id: POC_USER_ID,
+        user_id: userId,
         title: course.title,
         description: course.description || '',
         category: course.category || 'Général',
@@ -91,7 +124,10 @@ serve(async (req) => {
 
     if (courseError) {
       console.error('Error inserting course:', courseError);
-      throw courseError;
+      return new Response(
+        JSON.stringify({ error: 'Failed to create course' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     console.log(`Course created with ID: ${courseData.id}`);
@@ -104,11 +140,9 @@ serve(async (req) => {
         const firstOpt = card.options[0];
         
         if (typeof firstOpt === 'string') {
-          // Already string array - need correctIndex from card
           const correctIdx = (card as any).correctIndex ?? 0;
           optionsData = { options: card.options, correctIndex: correctIdx };
         } else if (typeof firstOpt === 'object' && firstOpt !== null) {
-          // Object array with { id?, text, isCorrect }
           const options = card.options.map((opt: any) => 
             typeof opt === 'string' ? opt : (opt.text || String(opt))
           );
@@ -143,7 +177,10 @@ serve(async (req) => {
     if (cardsError) {
       console.error('Error inserting cards:', cardsError);
       await supabase.from('courses').delete().eq('id', courseData.id);
-      throw cardsError;
+      return new Response(
+        JSON.stringify({ error: 'Failed to create course cards' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     console.log(`${cardsToInsert.length} cards inserted successfully`);
@@ -163,7 +200,7 @@ serve(async (req) => {
       sessionDate.setDate(today.getDate() + day);
 
       sessionsToCreate.push({
-        user_id: POC_USER_ID,
+        user_id: userId,
         course_id: courseData.id,
         scheduled_date: sessionDate.toISOString().split('T')[0],
         session_number: day + 1,
@@ -207,7 +244,7 @@ serve(async (req) => {
     console.error('Error in save-generated-course:', error);
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Unknown error occurred' 
+        error: 'An error occurred while saving the course' 
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

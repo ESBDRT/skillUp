@@ -151,9 +151,6 @@ function validateCourse(course: unknown, index: number): { valid: true; data: Im
   };
 }
 
-// POC User ID - matches the one in src/lib/constants.ts
-const POC_USER_ID = "00000000-0000-0000-0000-000000000001";
-
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -163,20 +160,49 @@ serve(async (req) => {
   try {
     // Create Supabase client with service role for POC
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
-    if (!supabaseUrl || !supabaseServiceKey) {
+    if (!supabaseUrl || !supabaseServiceKey || !supabaseAnonKey) {
       console.error('Missing database credentials');
       return new Response(
         JSON.stringify({ error: 'Service temporarily unavailable' }),
         { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Validate JWT token from Authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
+    
+    if (claimsError || !claimsData?.claims) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const userId = claimsData.claims.sub;
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Use POC user ID (no auth required for POC)
-    const userId = POC_USER_ID;
 
     // Parse request body
     let body: unknown;

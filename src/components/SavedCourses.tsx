@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Play, Clock, BookOpen, Trash2, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { POC_USER_ID } from '@/lib/constants';
+import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -22,23 +22,25 @@ interface CourseProgress {
 
 export function SavedCourses() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [courses, setCourses] = useState<CourseProgress[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchSavedCourses();
-  }, []);
+    if (user) {
+      fetchSavedCourses();
+    }
+  }, [user]);
 
   const fetchSavedCourses = async () => {
-    // Use the POC user ID for all tests
-    const userId = POC_USER_ID;
+    if (!user) return;
 
     try {
       const { data, error } = await supabase
         .from('course_progress')
         .select('*')
-        .eq('user_id', userId)
+        .eq('user_id', user.id)
         .eq('is_completed', false)
         .order('updated_at', { ascending: false });
 

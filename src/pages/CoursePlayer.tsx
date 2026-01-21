@@ -4,8 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { mockLessons, Lesson, Card } from '@/data/mockData';
 import { useUser } from '@/context/UserContext';
+import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { POC_USER_ID } from '@/lib/constants';
 import { useCourseSessions } from '@/hooks/useCourseSessions';
 import { useMemoryConcepts } from '@/hooks/useMemoryConcepts';
 import StoryProgress from '@/components/StoryProgress';
@@ -25,7 +25,8 @@ const CoursePlayer = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { addXP, completeLesson, addMinutes, user } = useUser();
+  const { addXP, completeLesson, addMinutes, user: contextUser } = useUser();
+  const { user: authUser } = useAuth();
   const { completeSession } = useCourseSessions();
   const { addConcept } = useMemoryConcepts();
 
@@ -248,9 +249,9 @@ const CoursePlayer = () => {
   }, [currentCardIndex, earnedXP, completedCards, isComplete]);
 
   const saveProgress = async (showToast = true) => {
-    if (!generatedCourse) return;
+    if (!generatedCourse || !authUser) return;
 
-    const userId = POC_USER_ID;
+    const userId = authUser.id;
 
     setIsSaving(true);
     try {
